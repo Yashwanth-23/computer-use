@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 from datetime import datetime, timezone
 from playwright.sync_api import Page

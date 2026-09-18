@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from src.safety.guardrail import PolicyGuardrail, SecurityViolationError
 from src.safety.redaction import redact_text, redact_data
 from src.schemas.artifact import CapabilityStep, ActionType, RiskLevel, MultiStrategyLocator, LocatorCandidate, LocatorStrategy

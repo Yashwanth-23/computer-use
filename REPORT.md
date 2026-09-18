@@ -52,7 +52,7 @@ The system implements the core operational paradigm:
    * *Decision*: The LLM operates *strictly* during Phase 1 discovery. Once an artifact is compiled, the replay engine contains **zero LLM calls**.
    * *Trade-Off*: If a surface experiences catastrophic structural rewrites, deterministic replay stops and escalates rather than attempting unconstrained "self-healing." In banking, predictable execution and explicit failure contracts are vastly superior to non-deterministic model hallucinations.
 3. **Pluggable Discovery Interface with Frontier Model Telemetry**:
-   * *Decision*: Abstracted `LLMClient` supporting Claude (`claude-sonnet-5`), Gemini (`gemini-2.5-flash`), and a local goal-directed explorer (`SimulatedDiscoveryClient`).
+   * *Decision*: Abstracted `LLMClient` supporting Anthropic Claude (`claude-sonnet-5`), OpenAI (`gpt-4o`), Kimi (`moonshot-v1-8k`), Gemini (`gemini-2.5-flash`), and a local goal-directed explorer (`SimulatedDiscoveryClient`).
    * *Trade-Off*: Avoids vendor lock-in while guaranteeing evaluators can reproduce discovery runs without provisioning paid API keys.
 4. **Token-Efficient Interactive Observation vs. Raw DOM Dumps**:
    * *Decision*: Rather than flooding LLM context with the raw 50KB HTML tree each turn, `SurfaceObserver` parses the accessibility tree and extracts interactive controls (inputs, buttons, select, links, and balance grids) into a structured compact summary.

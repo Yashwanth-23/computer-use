@@ -1,4 +1,4 @@
-﻿import re
+import re
 import time
 from typing import Any, Tuple
 from playwright.sync_api import Page, Locator
