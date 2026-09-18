@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ApexCore :: Open Sub-Account</title>
+  <link rel="stylesheet" href="/static/_legacy.css">
+</head>
+<body>
+<table class="chrome"><tr><td class="header">ApexCore &trade; - Open Sub-Account</td></tr></table>
+<table class="content"><tr><td>
+  <p>Opening a sub-account for <b id="ctl00_MainContent_lblForMember">{{ member.full_name }} (ID {{ member.member_id }})</b></p>
+  <form method="post" action="/portal/sub-account/review" id="frmNewSubAccount">
+    <input type="hidden" name="ctl00_MainContent_hidMemberId" value="{{ member.member_id }}" />
+    <table class="formgrid">
+      <tr>
+        <td class="label">Product Type</td>
+        <td>
+          <select name="ctl00_MainContent_ddlProductType" id="ctl00_MainContent_ddlProductType">
+            <option value="HOLIDAY_CLUB">Holiday Club Savings</option>
+            <option value="CHRISTMAS_CLUB">Christmas Club Savings</option>
+            <option value="MONEY_MARKET">Money Market</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td class="label">Initial Deposit ($)</td>
+        <td><input type="text" name="ctl00_MainContent_txtInitialDeposit" id="ctl00_MainContent_txtInitialDeposit" /></td>
+      </tr>
+      <tr>
+        <td class="label">&nbsp;</td>
+        <td><input type="submit" class="btn" id="ctl00_MainContent_btnReview" value="Review Request" /></td>
+      </tr>
+    </table>
+  </form>
+  <p style="font-size:11px;color:#555;">Minimum initial deposit for this product is $25.00.</p>
+</td></tr></table>
+<div class="footer-legacy">ApexCore Servicing Platform - Internal Use Only - Build 4.2.1108</div>
+</body>
+</html>

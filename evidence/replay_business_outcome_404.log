@@ -1,0 +1,12 @@
+=== REPLAY LOG: EXPECTED BUSINESS OUTCOME (NOT A CRASH) ===
+TIMESTAMP:   2026-09-18T01:12:20.608527+00:00
+RUN ID:      run_b354172528a3
+STATUS:      BUSINESS_OUTCOME
+OUTCOME:     [MEMBER_NOT_FOUND]
+RULE ID:     rule_member_not_found
+MESSAGE:     Member Record Not Found in Fiserv Core for ID: 9999
+STEP TRACES:
+  * step_1_navigate           (2473.2ms) 
+  * step_2_type               (2465.8ms) [stable_id candidate=0]
+  * step_3_click              (1302.6ms) [stable_id candidate=0] - Business outcome detected: MEMBER_NOT_FOUND
+=====================================================

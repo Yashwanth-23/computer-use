@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ApexCore :: Member Lookup</title>
+  <link rel="stylesheet" href="/static/_legacy.css">
+</head>
+<body>
+<table class="chrome"><tr><td class="header">ApexCore &trade; - Member Lookup / Balance Inquiry</td></tr></table>
+
+{% if maintenance %}
+<table class="content"><tr><td>
+  <div id="pnlMaintenanceAlert" class="banner">
+    <table><tr>
+      <td><b>&#9888; Scheduled Maintenance Notice:</b> Core replication is running on a delayed
+      window. Data shown may lag by up to 60 seconds. Click Acknowledge to continue.</td>
+      <td style="width:120px;"><input type="button" class="btn" id="btnAckMaintenance"
+        value="Acknowledge" onclick="document.getElementById('pnlMaintenanceAlert').style.display='none';" /></td>
+    </tr></table>
+  </div>
+</td></tr></table>
+{% endif %}
+
+<table class="content"><tr><td>
+  <form method="post" action="/portal/member-lookup" id="frmMemberLookup">
+    <table class="formgrid">
+      <tr>
+        <td class="label"><label for="ctl00_MainContent_txtMemberId">Member ID:</label></td>
+        <td><input type="text" id="ctl00_MainContent_txtMemberId" name="ctl00_MainContent_txtMemberId" maxlength="10" /></td>
+      </tr>
+      <tr>
+        <td class="label">&nbsp;</td>
+        <td><input type="submit" class="btn" id="ctl00_MainContent_btnSearch" value="Search Member Record" /></td>
+      </tr>
+    </table>
+  </form>
+  <p style="font-size:11px;color:#555;">Enter a numeric Member ID (test IDs: 1001, 1002, 1003, 9999).</p>
+</td></tr></table>
+<div class="footer-legacy">ApexCore Servicing Platform - Internal Use Only - Build 4.2.1108</div>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ApexCore :: Confirm Sub-Account Opening</title>
+  <link rel="stylesheet" href="/static/_legacy.css">
+</head>
+<body>
+<table class="chrome"><tr><td class="header">ApexCore &trade; - Confirm Sub-Account Opening</td></tr></table>
+<table class="content"><tr><td>
+  <div class="banner">Please review the details below. This action <b>cannot be undone</b> once submitted.</div>
+  <table class="formgrid">
+    <tr><td class="label">Member</td><td id="ctl00_MainContent_lblConfirmMember">{{ member.full_name }} (ID {{ member.member_id }})</td></tr>
+    <tr><td class="label">Product Type</td><td id="ctl00_MainContent_lblConfirmProduct">{{ product_type }}</td></tr>
+    <tr><td class="label">Initial Deposit</td><td id="ctl00_MainContent_lblConfirmDeposit">${{ "%.2f"|format(deposit) }}</td></tr>
+  </table>
+  <form method="post" action="/portal/sub-account/confirm" id="frmConfirmSubAccount" style="margin-top:10px;">
+    <input type="hidden" name="ctl00_MainContent_hidMemberId" value="{{ member.member_id }}" />
+    <input type="hidden" name="ctl00_MainContent_hidProductType" value="{{ product_type }}" />
+    <input type="hidden" name="ctl00_MainContent_hidDeposit" value="{{ deposit }}" />
+    <input type="submit" class="btn" id="ctl00_MainContent_btnConfirmSubmit" value="Confirm and Submit" />
+  </form>
+</td></tr></table>
+<div class="footer-legacy">ApexCore Servicing Platform - Internal Use Only - Build 4.2.1108</div>
+</body>
+</html>

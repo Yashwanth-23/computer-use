@@ -1,0 +1,278 @@
+{
+  "schema_version": "1.0",
+  "metadata": {
+    "id": "cap_6fa4412fcfea",
+    "name": "discovered_member_lookup",
+    "version": "1.0.0",
+    "app_id": "apex_core_v4",
+    "tenant_id": null,
+    "author": "discovery_agent",
+    "created_at": "2026-09-18T01:17:20.966730Z",
+    "review_status": "draft",
+    "description": "Look up member 1001 and read savings and checking balances"
+  },
+  "input_parameters": [
+    {
+      "name": "member_id",
+      "type": "string",
+      "required": true,
+      "description": "Input parameter for member_id",
+      "enum_values": null,
+      "pattern": "^\\d{1,10}$",
+      "example": null
+    }
+  ],
+  "output_parameters": [
+    {
+      "name": "savings_balance",
+      "type": "number",
+      "description": "Extracted field savings_balance",
+      "extraction_locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_gvBalances_ctl02_lblSavingsBalance",
+            "note": null
+          },
+          {
+            "strategy": "structural_path",
+            "value": "//span[@id='ctl00_MainContent_gvBalances_ctl02_lblSavingsBalance']",
+            "note": null
+          }
+        ],
+        "reasoning": "Target balance span element in legacy nested table grid."
+      },
+      "transform": "strip_currency_symbol"
+    },
+    {
+      "name": "checking_balance",
+      "type": "number",
+      "description": "Extracted field checking_balance",
+      "extraction_locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_gvBalances_ctl03_lblCheckingBalance",
+            "note": null
+          },
+          {
+            "strategy": "structural_path",
+            "value": "//span[@id='ctl00_MainContent_gvBalances_ctl03_lblCheckingBalance']",
+            "note": null
+          }
+        ],
+        "reasoning": "Target balance span element in legacy nested table grid."
+      },
+      "transform": "strip_currency_symbol"
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "step_1_navigate",
+      "action": "navigate",
+      "locator": null,
+      "input_value": null,
+      "target_url": "http://127.0.0.1:8000/portal/member-lookup",
+      "is_risky": "safe",
+      "risk_justification": null,
+      "checkpoint": {
+        "description": "Navigation completed",
+        "locator": null,
+        "expected_url_pattern": "/portal/.*",
+        "timeout_ms": 5000
+      },
+      "max_wait_ms": 8000
+    },
+    {
+      "step_id": "step_2_type",
+      "action": "type",
+      "locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_txtMemberId",
+            "note": "Server-generated ASP.NET control ID; durable within release."
+          },
+          {
+            "strategy": "accessible_role_name",
+            "value": "role=textbox[name=\"Member ID:\"]",
+            "note": "Resilient across control-prefix shifts if label text remains constant."
+          },
+          {
+            "strategy": "label_proximity",
+            "value": "label:has-text(\"Member ID:\") >> xpath=following::input[1]",
+            "note": "Layout anchor if ID and name attributes change."
+          },
+          {
+            "strategy": "structural_path",
+            "value": "//body/table[2]/tbody[1]/tr[1]/td[1]/form[1]/table[1]/tbody[1]/tr[1]/td[2]/input[1]",
+            "note": "Structural DOM position fallback."
+          }
+        ],
+        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to accessible role/name and spatial label proximity if IDs change across releases."
+      },
+      "input_value": "{member_id}",
+      "target_url": null,
+      "is_risky": "safe",
+      "risk_justification": null,
+      "checkpoint": null,
+      "max_wait_ms": 8000
+    },
+    {
+      "step_id": "step_3_click",
+      "action": "click",
+      "locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_btnSearch",
+            "note": "Server-generated ASP.NET control ID; durable within release."
+          },
+          {
+            "strategy": "structural_path",
+            "value": "//body/table[2]/tbody[1]/tr[1]/td[1]/form[1]/table[1]/tbody[1]/tr[2]/td[2]/input[1]",
+            "note": "Structural DOM position fallback."
+          }
+        ],
+        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to accessible role/name and spatial label proximity if IDs change across releases."
+      },
+      "input_value": null,
+      "target_url": null,
+      "is_risky": "safe",
+      "risk_justification": null,
+      "checkpoint": null,
+      "max_wait_ms": 8000
+    },
+    {
+      "step_id": "step_4_extract",
+      "action": "extract",
+      "locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_gvBalances_ctl02_lblSavingsBalance",
+            "note": "Server-generated ASP.NET control ID; durable within release."
+          }
+        ],
+        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to accessible role/name and spatial label proximity if IDs change across releases."
+      },
+      "input_value": null,
+      "target_url": null,
+      "is_risky": "safe",
+      "risk_justification": null,
+      "checkpoint": null,
+      "max_wait_ms": 8000
+    },
+    {
+      "step_id": "step_5_extract",
+      "action": "extract",
+      "locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_gvBalances_ctl03_lblCheckingBalance",
+            "note": "Server-generated ASP.NET control ID; durable within release."
+          }
+        ],
+        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to accessible role/name and spatial label proximity if IDs change across releases."
+      },
+      "input_value": null,
+      "target_url": null,
+      "is_risky": "safe",
+      "risk_justification": null,
+      "checkpoint": null,
+      "max_wait_ms": 8000
+    }
+  ],
+  "success_checkpoint": {
+    "description": "Core records rendered with balance values present",
+    "locator": {
+      "chain": [
+        {
+          "strategy": "stable_id",
+          "value": "#ctl00_MainContent_gvBalances_ctl02_lblSavingsBalance",
+          "note": null
+        },
+        {
+          "strategy": "structural_path",
+          "value": "//span[@id='ctl00_MainContent_gvBalances_ctl02_lblSavingsBalance']",
+          "note": null
+        }
+      ],
+      "reasoning": "Target balance span element in legacy nested table grid."
+    },
+    "expected_url_pattern": "/portal/.*",
+    "timeout_ms": 5000
+  },
+  "exceptional_rules": [
+    {
+      "rule_id": "rule_member_not_found",
+      "outcome_class": "business_outcome",
+      "signature": {
+        "locator": {
+          "chain": [
+            {
+              "strategy": "stable_id",
+              "value": "#ctl00_MainContent_lblResultMessage",
+              "note": null
+            },
+            {
+              "strategy": "text_match",
+              "value": "Member Record Not Found",
+              "note": null
+            }
+          ],
+          "reasoning": "Legacy result message span displays record not found notifications."
+        },
+        "text_pattern": "Member Record Not Found"
+      },
+      "outcome_code": "MEMBER_NOT_FOUND",
+      "description": "Member ID was not found in the core banking system.",
+      "recovery_action": null
+    },
+    {
+      "rule_id": "rule_maintenance_interstitial",
+      "outcome_class": "recoverable",
+      "signature": {
+        "locator": {
+          "chain": [
+            {
+              "strategy": "stable_id",
+              "value": "#pnlMaintenanceAlert",
+              "note": null
+            }
+          ],
+          "reasoning": "Maintenance modal banner container."
+        },
+        "text_pattern": null
+      },
+      "outcome_code": "MAINTENANCE_INTERSTITIAL_DISMISSED",
+      "description": "System maintenance popup appeared; dismiss to continue.",
+      "recovery_action": {
+        "step_id": "dismiss_maintenance",
+        "action": "dismiss",
+        "locator": {
+          "chain": [
+            {
+              "strategy": "stable_id",
+              "value": "#btnAckMaintenance",
+              "note": null
+            }
+          ],
+          "reasoning": "Acknowledge button to dismiss maintenance notification."
+        },
+        "input_value": null,
+        "target_url": null,
+        "is_risky": "safe",
+        "risk_justification": null,
+        "checkpoint": null,
+        "max_wait_ms": 8000
+      }
+    }
+  ],
+  "allowed_domains": [
+    "127.0.0.1:8000",
+    "127.0.0.1:8000",
+    "localhost:8000"
+  ]
+}

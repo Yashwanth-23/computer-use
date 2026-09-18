@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ApexCore :: Member Record</title>
+  <link rel="stylesheet" href="/static/_legacy.css">
+</head>
+<body>
+<table class="chrome"><tr><td class="header">ApexCore &trade; - Member Record Detail</td></tr></table>
+<table class="content"><tr><td>
+  <table width="100%"><tr><td>
+    <table class="formgrid">
+      <tr><td class="label">Member ID</td><td id="ctl00_MainContent_lblMemberId">{{ member.member_id }}</td></tr>
+      <tr><td class="label">Name</td><td id="ctl00_MainContent_lblMemberName">{{ member.full_name }}</td></tr>
+      <tr><td class="label">Status</td><td id="ctl00_MainContent_lblStatus">{{ member.status }}</td></tr>
+    </table>
+  </td></tr></table>
+
+  <p style="margin-top:14px;"><b>Account Balances</b></p>
+  <table class="formgrid" id="ctl00_MainContent_gvBalances">
+    <tr>
+      <td class="label">Savings</td>
+      <td>
+        <table><tr><td>
+          <span id="ctl00_MainContent_gvBalances_ctl02_lblSavingsBalance">${{ "%.2f"|format(member.savings_balance) }}</span>
+        </td></tr></table>
+      </td>
+    </tr>
+    <tr>
+      <td class="label">Checking</td>
+      <td>
+        <table><tr><td>
+          <span id="ctl00_MainContent_gvBalances_ctl03_lblCheckingBalance">${{ "%.2f"|format(member.checking_balance) }}</span>
+        </td></tr></table>
+      </td>
+    </tr>
+  </table>
+
+  <p style="margin-top:14px;">
+    <a class="navlink" id="ctl00_MainContent_lnkOpenSubAccount"
+       href="/portal/sub-account/new?member_id={{ member.member_id }}">Open Sub-Account for this Member &raquo;</a>
+  </p>
+  <p><a class="navlink" href="/portal/member-lookup">&laquo; New Search</a></p>
+</td></tr></table>
+<div class="footer-legacy">ApexCore Servicing Platform - Internal Use Only - Build 4.2.1108</div>
+</body>
+</html>

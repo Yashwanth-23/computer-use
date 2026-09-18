@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ApexCore :: Sub-Account Confirmation</title>
+  <link rel="stylesheet" href="/static/_legacy.css">
+</head>
+<body>
+<table class="chrome"><tr><td class="header">ApexCore &trade; - Sub-Account Confirmation</td></tr></table>
+<table class="content"><tr><td>
+  <div id="ctl00_MainContent_pnlReceipt" class="receipt">
+    <p><b>Sub-account opened successfully.</b></p>
+    <table class="formgrid">
+      <tr><td class="label">Receipt ID</td><td id="ctl00_MainContent_lblReceiptId">{{ receipt.receipt_id }}</td></tr>
+      <tr><td class="label">Member</td><td>{{ member.full_name }} (ID {{ member.member_id }})</td></tr>
+      <tr><td class="label">Product Type</td><td>{{ receipt.product_type }}</td></tr>
+      <tr><td class="label">Initial Deposit</td><td>${{ "%.2f"|format(receipt.initial_deposit) }}</td></tr>
+      <tr><td class="label">Opened At (UTC)</td><td>{{ receipt.opened_at }}</td></tr>
+    </table>
+  </div>
+  <p><a class="navlink" href="/portal/member-lookup">&laquo; New Search</a></p>
+</td></tr></table>
+<div class="footer-legacy">ApexCore Servicing Platform - Internal Use Only - Build 4.2.1108</div>
+</body>
+</html>
