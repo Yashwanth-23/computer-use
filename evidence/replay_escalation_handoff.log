@@ -1,12 +1,12 @@
 === HUMAN-IN-THE-LOOP ESCALATION & HANDOFF AUDIT TRAIL ===
-TIMESTAMP:       2026-09-18T03:06:11.974614+00:00
-INCIDENT ID:     esc_4208f8315473
+TIMESTAMP:       2026-09-18T03:20:57.704302+00:00
+INCIDENT ID:     esc_bdc0ce53feab
 REASON:          risky_step_approval
 EXPLANATION:     Policy Gate: Opening holiday club sub-account is classified as RISKY_IRREVERSIBLE.
 PROPOSED ACTION: Open HOLIDAY_CLUB sub-account for member 1001 ($50.00 deposit)
-SCREENSHOT REF:  evidence/screenshots\escalation_run_evid_step_confirm_sub_account_20260918_030611.png
+SCREENSHOT REF:  evidence/screenshots\escalation_run_evid_step_confirm_sub_account_20260918_032057.png
 SESSION ID:      sess_live_core
 FINAL STATE:     automation_running
 OPERATOR ACTIONS RECORDED ON LIVE SESSION:
-  * [2026-09-18T03:06:11.974563+00:00] Operator resolved via custom handler: Human operator configured sub-account product and navigated to review confirmation
+  * [2026-09-18T03:20:57.704243+00:00] Operator resolved via custom handler: Human operator configured sub-account product and navigated to review confirmation
 =========================================================

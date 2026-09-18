@@ -18,6 +18,38 @@ from src.schemas.artifact import (
 )
 
 
+import re
+
+
+def extract_semantic_field_label(element_id: str, desc: str = "") -> str:
+    """Derives a semantic label anchor from an element ID or description.
+    
+    Generalizes across arbitrary field types without hardcoding:
+    - lblMemberName -> 'Name'
+    - lblStatus -> 'Status'
+    - lblSavingsBalance -> 'Savings'
+    - 'Extract output account_type' -> 'Account'
+    """
+    if desc:
+        m = re.search(r"Extract output\s+([a-zA-Z0-9_]+)", desc, re.IGNORECASE)
+        if m:
+            raw = m.group(1).replace("_", " ").strip()
+            parts = raw.split()
+            if parts:
+                return parts[0].capitalize()
+
+    if element_id:
+        tail = element_id.split("_")[-1]
+        cleaned = re.sub(r"^(lbl|txt|btn|chk|ddl|gv|val|sp)", "", tail, flags=re.IGNORECASE)
+        tokens = re.findall(r"[A-Z][a-z]*", cleaned)
+        if tokens:
+            return tokens[0]
+        if cleaned:
+            return cleaned.capitalize()
+
+    return ""
+
+
 def compile_capability_from_trace(
     capability_name: str,
     description: str,
@@ -49,8 +81,9 @@ def compile_capability_from_trace(
 
             is_extract = action_type == ActionType.EXTRACT
             acc_name = (el.get("accessible_name") or "").strip()
-            # If the accessible name looks like dynamic data (currency, numeric value, or extraction step),
-            # never bake it into locator candidates.
+            # If the step is an extraction step, the element contains output data (name, balance, status),
+            # so its text content or accessible_name is NEVER a reliable locator anchor.
+            # Similarly, for interactive steps, if accessible_name contains currency or raw digits, it's dynamic data.
             is_dynamic_value = (
                 is_extract
                 or acc_name.startswith("$")
@@ -67,12 +100,12 @@ def compile_capability_from_trace(
 
             # 3. Fallback: Label proximity
             if is_extract:
-                field_hint = "Savings" if "savings" in el.get("element_id", "").lower() else ("Checking" if "checking" in el.get("element_id", "").lower() else "")
-                if field_hint:
+                label_anchor = extract_semantic_field_label(el.get("element_id", ""), s.get("checkpoint_desc", ""))
+                if label_anchor:
                     candidates.append(LocatorCandidate(
                         strategy=LocatorStrategy.LABEL_PROXIMITY,
-                        value=f"tr:has(td:has-text(\"{field_hint}\")) >> span",
-                        note=f"Positioned relative to '{field_hint}' row header without value dependency."
+                        value=f"tr:has(td:has-text(\"{label_anchor}\")) >> span",
+                        note=f"Positioned relative to '{label_anchor}' row header without value dependency."
                     ))
             elif acc_name and not is_dynamic_value:
                 candidates.append(LocatorCandidate(

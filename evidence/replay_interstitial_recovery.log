@@ -1,15 +1,15 @@
 === REPLAY LOG: RECOVERABLE CONDITION RECOVERY ===
-TIMESTAMP:   2026-09-18T03:06:11.182203+00:00
-RUN ID:      run_b4adc3374097
+TIMESTAMP:   2026-09-18T03:20:56.928397+00:00
+RUN ID:      run_57ab87bd8e85
 STATUS:      RECOVERED
 OUTPUTS:     {
   "savings_balance": 24500.0,
   "checking_balance": 4120.0
 }
 STEP TRACES (Showing Dismissal Action):
-  * step_1_navigate           (904.4ms)  - Dismissed interstitial: System maintenance popup appeared; dismiss to continue.
-  * step_2_type               (962.1ms) [stable_id candidate=0]
-  * step_3_click              (1010.9ms) [stable_id candidate=0]
-  * step_4_extract            (954.7ms) [stable_id candidate=0]
-  * step_5_extract            (942.5ms) [stable_id candidate=0]
+  * step_1_navigate           (899.3ms)  - Dismissed interstitial: System maintenance popup appeared; dismiss to continue.
+  * step_2_type               (961.7ms) [stable_id candidate=0]
+  * step_3_click              (987.1ms) [stable_id candidate=0]
+  * step_4_extract            (952.9ms) [stable_id candidate=0]
+  * step_5_extract            (952.4ms) [stable_id candidate=0]
 =====================================================

@@ -15,8 +15,15 @@ class RecoveryManager:
     def __init__(self, rules: list[ExceptionalRule]):
         self.rules = rules
 
-    def check_and_handle_conditions(self, page: Page) -> Tuple[bool, ExceptionalRule | None, str | None]:
+    def check_and_handle_conditions(
+        self, page: Page, timeout_per_candidate_ms: int = 150
+    ) -> Tuple[bool, ExceptionalRule | None, str | None]:
         """Scans the page for any matching ExceptionalRule signatures.
+
+        Args:
+            page: Active Playwright page.
+            timeout_per_candidate_ms: Per-candidate wait timeout (default: 150ms for routine
+                fast-path checks, 1500ms for reactive recovery checks when action is blocked).
 
         Returns:
             (was_recovered: bool, matched_rule: ExceptionalRule | None, detail_message: str | None)
@@ -28,7 +35,7 @@ class RecoveryManager:
             # 1. Check locator signature if defined
             if rule.signature.locator:
                 try:
-                    loc, _ = resolve_locator(page, rule.signature.locator, timeout_per_candidate_ms=150)
+                    loc, _ = resolve_locator(page, rule.signature.locator, timeout_per_candidate_ms=timeout_per_candidate_ms)
                     if loc.is_visible():
                         matched = True
                         extracted_text = loc.inner_text().strip()

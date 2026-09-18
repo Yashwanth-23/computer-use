@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import time
 from datetime import datetime, timezone
@@ -143,24 +143,36 @@ class ReplayExecutor:
                         try:
                             loc_target, locator_res = resolve_locator(page, step.locator, timeout_per_candidate_ms=2500)
                         except LocatorResolutionError:
-                            # Check if an exceptional business outcome rule explains why locator was not found
-                            _, check_rule, check_msg = recovery_mgr.check_and_handle_conditions(page)
-                            if check_rule and check_rule.outcome_class == OutcomeClass.BUSINESS_OUTCOME:
-                                return ExecutionResult(
-                                    run_id=run_id,
-                                    capability_id=artifact.metadata.id,
-                                    capability_version=artifact.metadata.version,
-                                    status=ReplayStatus.BUSINESS_OUTCOME,
-                                    started_at=started_at,
-                                    finished_at=datetime.now(timezone.utc),
-                                    step_traces=traces,
-                                    business_outcome=BusinessOutcomeDetail(
-                                        outcome_code=check_rule.outcome_code,
-                                        matched_rule_id=check_rule.rule_id,
-                                        message=check_msg or check_rule.description,
+                            # 1. Reactive check: check if a slow-loading interstitial blocked the target element
+                            recovered, rec_rule, rec_msg = recovery_mgr.check_and_handle_conditions(page, timeout_per_candidate_ms=1500)
+                            if recovered:
+                                traces.append(StepTrace(
+                                    step_id=step.step_id,
+                                    outcome=StepOutcome.OK,
+                                    started_at=datetime.now(timezone.utc),
+                                    duration_ms=round((time.perf_counter() - step_start) * 1000, 2),
+                                    detail=f"Dismissed late interstitial: {rec_rule.description}",
+                                ))
+                                # Retry resolving target locator after dismissal
+                                loc_target, locator_res = resolve_locator(page, step.locator, timeout_per_candidate_ms=2500)
+                            else:
+                                # 2. Check if an exceptional business outcome rule explains why locator was not found
+                                if rec_rule and rec_rule.outcome_class == OutcomeClass.BUSINESS_OUTCOME:
+                                    return ExecutionResult(
+                                        run_id=run_id,
+                                        capability_id=artifact.metadata.id,
+                                        capability_version=artifact.metadata.version,
+                                        status=ReplayStatus.BUSINESS_OUTCOME,
+                                        started_at=started_at,
+                                        finished_at=datetime.now(timezone.utc),
+                                        step_traces=traces,
+                                        business_outcome=BusinessOutcomeDetail(
+                                            outcome_code=rec_rule.outcome_code,
+                                            matched_rule_id=rec_rule.rule_id,
+                                            message=rec_msg or rec_rule.description,
+                                        )
                                     )
-                                )
-                            raise
+                                raise
 
                     # Execute concrete action
                     if step.action == ActionType.NAVIGATE:
