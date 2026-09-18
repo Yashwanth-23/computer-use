@@ -35,7 +35,7 @@ playwright install chromium
 
 ### 3. API Keys & Live Services
 * **Running with an LLM Key**:
-  * Set `GEMINI_API_KEY` (Free tier from [Google AI Studio](https://aistudio.google.com/)) or `ANTHROPIC_API_KEY` (Claude Sonnet 5).
+  * Set `ANTHROPIC_API_KEY` or `GEMINI_API_KEY` in your environment.
 * **Running Without Any Keys (100% Offline / Standalone)**:
   * The system ships with a built-in goal-directed explorer (`SimulatedDiscoveryClient`). If no API key is present, discovery runs locally against the live browser, compiling real capability artifacts right out of the box with zero external dependencies.
 
