@@ -1,6 +1,6 @@
 # System Design Report: Computer-Use Automation System
 
-**Author:** Yashwanth Vasireddy  
+**Author:** Yashwanth Reddy Vasireddy  
 **Project:** Autonomous Computer-Use Automation System for Legacy Enterprise Surfaces  
 **Target Domain:** Legacy Core Banking & Credit Union Servicing Platforms (Fiserv/Jack Henry/FIS-style)
 
