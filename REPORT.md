@@ -68,7 +68,9 @@ The capability artifact (`src/schemas/artifact.py`) is designed as an **agent-in
 
 * **Multi-Strategy Locators with Robustness Reasoning**:  
   Elements are never bound to a single brittle selector. Each `CapabilityStep` and `OutputField` defines a `MultiStrategyLocator` with an ordered `chain` of candidates:
-  $$\text{Stable ID} \longrightarrow \text{Accessible Role + Name} \longrightarrow \text{Spatial Label Proximity} \longrightarrow \text{Structural XPath}$$
+  ```
+  Stable ID ──► Accessible Role + Name ──► Spatial Label Proximity ──► Structural XPath
+  ```
   Each chain requires a mandatory `reasoning` field documenting *why* that priority was chosen. For example:
   > *"Structural ID is primary here because this simulates a legacy server-rendered app where IDs are compiler-generated and stable; on a modern SPA, the priority would invert toward accessible role/name as primary."*
 * **Semantic Extraction Fallbacks & Label Alignment Caveat**:  
@@ -77,9 +79,9 @@ The capability artifact (`src/schemas/artifact.py`) is designed as an **agent-in
   Inputs (`InputParameter`) and outputs (`OutputField`) enforce strict primitive typing (`string`, `number`, `boolean`, `enum`). Parameter placeholders (`{member_id}`) are resolved dynamically during replay, preventing hardcoded credentials or test values from polluting the capability.
 * **Structural Result Guarantees (`ExecutionResult`)**:  
   The result contract enforces mutually exclusive fields at schema validation time:
-  * `SUCCESS` / `RECOVERED` $\implies$ requires `outputs`, forbids `debug` and `business_outcome`.
-  * `BUSINESS_OUTCOME` $\implies$ requires `business_outcome`, forbids `outputs` and `debug`.
-  * `HARD_FAILURE` $\implies$ requires `debug` (failed step, expected vs observed, failure screenshot), forbids `outputs`.
+  * `SUCCESS` / `RECOVERED`: requires `outputs`, forbids `debug` and `business_outcome`.
+  * `BUSINESS_OUTCOME`: requires `business_outcome`, forbids `outputs` and `debug`.
+  * `HARD_FAILURE`: requires `debug` (failed step, expected vs observed, failure screenshot), forbids `outputs`.
 
 ---
 
@@ -90,7 +92,7 @@ Deterministic replay in enterprise banking must accommodate runtime variance wit
 ### 1. The Three-Way Outcome Split
 | Outcome Class | Example Condition | System Behavior | Result Contract |
 | :--- | :--- | :--- | :--- |
-| **Expected Business Outcome** | Member `9999` $\to$ *"Member Record Not Found in Fiserv Core"* | Halts execution gracefully; reports structured domain data. **Not a system error.** | `status="BUSINESS_OUTCOME"`, `code="MEMBER_NOT_FOUND"` |
+| **Expected Business Outcome** | Member `9999` -> *"Member Record Not Found in Fiserv Core"* | Halts execution gracefully; reports structured domain data. **Not a system error.** | `status="BUSINESS_OUTCOME"`, `code="MEMBER_NOT_FOUND"` |
 | **Recoverable Condition** | *"Scheduled Maintenance Notice"* interstitial modal appears | Detects modal, invokes `recovery_action` (clicks *"Acknowledge"*), resumes sequence. | `status="RECOVERED"`, records dismissal in `step_traces` |
 | **Hard Failure** | Network timeout, unresolvable element, or page crash | Captures live screenshot, extracts redacted DOM context, halts cleanly. | `status="HARD_FAILURE"`, `debug=DebugContext(...)` |
 
@@ -151,7 +153,9 @@ When 200 credit unions run the same core vendor application with divergent brand
 
 Escalation is not an uncaught exception; it is an architected state machine operating on the **exact same live browser session**:
 
-$$\text{AUTOMATION\_RUNNING} \xrightarrow{\text{trigger}} \text{ESCALATION\_PENDING} \xrightarrow{\text{takeover}} \text{HUMAN\_CONTROLLED} \xrightarrow{\text{signal done}} \text{RESUMING} \xrightarrow{\text{verify}} \text{AUTOMATION\_RUNNING}$$
+```
+[AUTOMATION_RUNNING] ──(trigger)──► [ESCALATION_PENDING] ──(takeover)──► [HUMAN_CONTROLLED] ──(resume)──► [RESUMING] ──(verify)──► [AUTOMATION_RUNNING]
+```
 
 ### Dual Escalation Triggers
 1. **Reactive Escalation (Stuck/Unresolvable)**: Automation hits an unexpected interstitial or unresolved locator candidate.
@@ -169,10 +173,10 @@ $$\text{AUTOMATION\_RUNNING} \xrightarrow{\text{trigger}} \text{ESCALATION\_PEND
 
 * **Domain & Route Allowlists**: `PolicyGuardrail` validates every navigation against `artifact.allowed_domains`. Navigation to unlisted hosts raises `SecurityViolationError`.
 * **Zero PII & Secrets Persistence**: `src/safety/redaction.py` enforces regex sanitization across all logs, step traces, and output payloads:
-  * SSNs (`\b\d{3}-\d{2}-\d{4}\b`) $\to$ `[REDACTED_SSN]`
-  * Credit/Debit Cards (`\b(?:\d{4}[ -]?){3}\d{4}\b`) $\to$ `[REDACTED_CARD]`
-  * JWTs & Session Tokens $\to$ `[REDACTED_JWT]`
-  * Passwords / API Keys $\to$ `[REDACTED_SECRET]`
+  * SSNs (`\b\d{3}-\d{2}-\d{4}\b`) -> `[REDACTED_SSN]`
+  * Credit/Debit Cards (`\b(?:\d{4}[ -]?){3}\d{4}\b`) -> `[REDACTED_CARD]`
+  * JWTs & Session Tokens -> `[REDACTED_JWT]`
+  * Passwords / API Keys -> `[REDACTED_SECRET]`
 
 ---
 

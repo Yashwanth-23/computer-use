@@ -8,7 +8,7 @@
 
 > **"The model discovers. The artifact becomes a reusable capability. Deterministic replay is how the AI agent invokes it in production."**
 
-1. **Discovery (Model in the Loop)**: An LLM explores a live application surface using an *Observe $\to$ Decide $\to$ Act* loop, overcoming hostile legacy quirks (nested `<table>` tags, ASP.NET-style control IDs, absence of `data-testid`).
+1. **Discovery (Model in the Loop)**: An LLM explores a live application surface using an **Observe -> Decide -> Act** loop, overcoming hostile legacy quirks (nested `<table>` tags, ASP.NET-style control IDs, absence of `data-testid`).
 2. **Capability Artifact**: The successful execution is compiled into a typed, versioned, agent-invocable capability schema decoupled from the raw model transcript.
 3. **Deterministic Replay (Zero Model in the Loop)**: In production, the capability replays at **0 token cost** and sub-second latency, resolving elements via multi-strategy locator chains and distinguishing **Expected Business Outcomes** from **Recoverable Interstitials** and **Hard Failures**.
 4. **Human-in-the-Loop Escalation**: When unresolvable blockers or irreversible actions occur, the system pauses on the **exact same live browser session**, transfers control to a human operator, records their actions, and safely resumes automation.
