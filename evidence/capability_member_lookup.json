@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
   "metadata": {
-    "id": "cap_7b0e8ea9721b",
+    "id": "cap_c644938a3f5d",
     "name": "discovered_member_lookup",
     "version": "1.0.0",
     "app_id": "apex_core_v4",
     "tenant_id": null,
     "author": "discovery_agent",
-    "created_at": "2026-09-18T02:39:22.913420Z",
+    "created_at": "2026-09-18T03:06:29.133306Z",
     "review_status": "draft",
     "description": "Look up member 1001 and read savings and checking balances"
   },
@@ -109,7 +109,7 @@
             "note": "Structural DOM position fallback."
           }
         ],
-        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to accessible role/name and spatial label proximity if IDs change across releases."
+        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to structural layout proximity relative to stable row headers without value dependency."
       },
       "input_value": "{member_id}",
       "target_url": null,
@@ -134,7 +134,7 @@
             "note": "Structural DOM position fallback."
           }
         ],
-        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to accessible role/name and spatial label proximity if IDs change across releases."
+        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to structural layout proximity relative to stable row headers without value dependency."
       },
       "input_value": null,
       "target_url": null,
@@ -154,14 +154,9 @@
             "note": "Server-generated ASP.NET control ID; durable within release."
           },
           {
-            "strategy": "accessible_role_name",
-            "value": "role=span[name=\"$24500.00\"]",
-            "note": "Resilient across control-prefix shifts if label text remains constant."
-          },
-          {
             "strategy": "label_proximity",
-            "value": "label:has-text(\"$24500.00\") >> xpath=following::input[1]",
-            "note": "Layout anchor if ID and name attributes change."
+            "value": "tr:has(td:has-text(\"Savings\")) >> span",
+            "note": "Positioned relative to 'Savings' row header without value dependency."
           },
           {
             "strategy": "structural_path",
@@ -169,7 +164,7 @@
             "note": "Structural DOM position fallback."
           }
         ],
-        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to accessible role/name and spatial label proximity if IDs change across releases."
+        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to structural layout proximity relative to stable row headers without value dependency."
       },
       "input_value": null,
       "target_url": null,
@@ -189,14 +184,9 @@
             "note": "Server-generated ASP.NET control ID; durable within release."
           },
           {
-            "strategy": "accessible_role_name",
-            "value": "role=span[name=\"$4120.00\"]",
-            "note": "Resilient across control-prefix shifts if label text remains constant."
-          },
-          {
             "strategy": "label_proximity",
-            "value": "label:has-text(\"$4120.00\") >> xpath=following::input[1]",
-            "note": "Layout anchor if ID and name attributes change."
+            "value": "tr:has(td:has-text(\"Checking\")) >> span",
+            "note": "Positioned relative to 'Checking' row header without value dependency."
           },
           {
             "strategy": "structural_path",
@@ -204,7 +194,7 @@
             "note": "Structural DOM position fallback."
           }
         ],
-        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to accessible role/name and spatial label proximity if IDs change across releases."
+        "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to structural layout proximity relative to stable row headers without value dependency."
       },
       "input_value": null,
       "target_url": null,
@@ -301,7 +291,6 @@
     }
   ],
   "allowed_domains": [
-    "127.0.0.1:8000",
     "127.0.0.1:8000",
     "localhost:8000"
   ]

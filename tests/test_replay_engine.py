@@ -1,4 +1,4 @@
-﻿import time
+import time
 import pytest
 import requests
 
@@ -47,7 +47,6 @@ def test_deterministic_replay_interstitial_recovery():
     executor = ReplayExecutor(headless=True)
 
     result = executor.run(artifact, inputs={"member_id": "1001"})
-
     assert result.status == ReplayStatus.RECOVERED
     assert result.outputs["savings_balance"] == 24500.0
     # Confirm trace shows interstitial was dismissed

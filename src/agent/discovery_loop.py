@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import time
 import logging
@@ -98,9 +98,10 @@ Respond strictly with a valid JSON object.
                     usage = decision.get("_usage")
                     usage_str = f" | Tokens: in={usage['input_tokens']}, out={usage['output_tokens']}" if usage else ""
 
+                    clean_args = {k: v for k, v in decision.items() if not k.startswith("_") and k != "thought" and k != "action"}
                     log_entries.append(f"[Step {step_num}] Model: {model_name} (Latency: {latency}ms{usage_str})")
                     log_entries.append(f"  Thought: {thought}")
-                    log_entries.append(f"  Action:  {action} (args: {decision})")
+                    log_entries.append(f"  Action:  {action} {clean_args}")
 
                     # 3. ACT
                     if action == "FINISH":

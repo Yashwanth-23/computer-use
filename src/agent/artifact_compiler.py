@@ -1,4 +1,4 @@
-﻿from typing import List, Dict, Any
+from typing import List, Dict, Any
 from src.schemas.artifact import (
     CapabilityArtifact,
     CapabilityMetadata,
@@ -47,19 +47,37 @@ def compile_capability_from_trace(
                     note="Server-generated ASP.NET control ID; durable within release."
                 ))
 
-            # 2. Fallback: Accessible role and name
-            if el.get("role") and el.get("accessible_name"):
+            is_extract = action_type == ActionType.EXTRACT
+            acc_name = (el.get("accessible_name") or "").strip()
+            # If the accessible name looks like dynamic data (currency, numeric value, or extraction step),
+            # never bake it into locator candidates.
+            is_dynamic_value = (
+                is_extract
+                or acc_name.startswith("$")
+                or any(char.isdigit() for char in acc_name)
+            )
+
+            # 2. Fallback: Accessible role and name (only if NOT dynamic data)
+            if el.get("role") and acc_name and not is_dynamic_value:
                 candidates.append(LocatorCandidate(
                     strategy=LocatorStrategy.ACCESSIBLE_ROLE_NAME,
-                    value=f"role={el['role']}[name=\"{el['accessible_name']}\"]",
+                    value=f"role={el['role']}[name=\"{acc_name}\"]",
                     note="Resilient across control-prefix shifts if label text remains constant."
                 ))
 
             # 3. Fallback: Label proximity
-            if el.get("accessible_name"):
+            if is_extract:
+                field_hint = "Savings" if "savings" in el.get("element_id", "").lower() else ("Checking" if "checking" in el.get("element_id", "").lower() else "")
+                if field_hint:
+                    candidates.append(LocatorCandidate(
+                        strategy=LocatorStrategy.LABEL_PROXIMITY,
+                        value=f"tr:has(td:has-text(\"{field_hint}\")) >> span",
+                        note=f"Positioned relative to '{field_hint}' row header without value dependency."
+                    ))
+            elif acc_name and not is_dynamic_value:
                 candidates.append(LocatorCandidate(
                     strategy=LocatorStrategy.LABEL_PROXIMITY,
-                    value=f"label:has-text(\"{el['accessible_name']}\") >> xpath=following::input[1]",
+                    value=f"label:has-text(\"{acc_name}\") >> xpath=following::input[1]",
                     note="Layout anchor if ID and name attributes change."
                 ))
 
@@ -69,6 +87,12 @@ def compile_capability_from_trace(
                     strategy=LocatorStrategy.STRUCTURAL_PATH,
                     value=el["xpath"],
                     note="Structural DOM position fallback."
+                ))
+            elif is_extract and el.get("element_id"):
+                candidates.append(LocatorCandidate(
+                    strategy=LocatorStrategy.STRUCTURAL_PATH,
+                    value=f"//span[@id='{el['element_id']}']",
+                    note="Structural XPath fallback."
                 ))
 
             # Fallback if no specific candidates
@@ -83,7 +107,7 @@ def compile_capability_from_trace(
                 chain=candidates,
                 reasoning=(
                     "Priority starts with server-generated control IDs durable in legacy banking apps. "
-                    "Falls back to accessible role/name and spatial label proximity if IDs change across releases."
+                    "Falls back to structural layout proximity relative to stable row headers without value dependency."
                 )
             )
 
@@ -197,5 +221,5 @@ def compile_capability_from_trace(
         steps=compiled_steps,
         success_checkpoint=success_chk,
         exceptional_rules=exceptional_rules,
-        allowed_domains=allowed_domains,
+        allowed_domains=list(dict.fromkeys(allowed_domains)),
     )

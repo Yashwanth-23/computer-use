@@ -1,4 +1,4 @@
-﻿import re
+import re
 import logging
 from typing import Tuple
 from playwright.sync_api import Page
@@ -28,7 +28,7 @@ class RecoveryManager:
             # 1. Check locator signature if defined
             if rule.signature.locator:
                 try:
-                    loc, _ = resolve_locator(page, rule.signature.locator, timeout_per_candidate_ms=400)
+                    loc, _ = resolve_locator(page, rule.signature.locator, timeout_per_candidate_ms=150)
                     if loc.is_visible():
                         matched = True
                         extracted_text = loc.inner_text().strip()
@@ -38,10 +38,12 @@ class RecoveryManager:
             # 2. Check text pattern if defined and not already matched
             if not matched and rule.signature.text_pattern:
                 try:
-                    page_content = page.inner_text("body")
-                    if re.search(rule.signature.text_pattern, page_content, re.IGNORECASE):
-                        matched = True
-                        extracted_text = rule.signature.text_pattern
+                    body = page.locator("body")
+                    if body.count() > 0:
+                        page_content = body.first.inner_text()
+                        if re.search(rule.signature.text_pattern, page_content, re.IGNORECASE):
+                            matched = True
+                            extracted_text = rule.signature.text_pattern
                 except Exception:
                     pass
 
