@@ -1,10 +1,10 @@
 """
-ApexCore Banking Portal — a standalone, intentionally legacy-styled mock
+ApexCore Banking Portal: a standalone, intentionally legacy-styled mock
 banking back-office application.
 
 Purpose: this is the proxy target for the interface.ai take-home. It exists
 so the computer-use agent has a *real, hostile-but-honest* UI surface to
-drive — nested tables, non-semantic markup, ASP.NET-style control IDs,
+drive: nested tables, non-semantic markup, ASP.NET-style control IDs,
 server-rendered pages, no test IDs, and a couple of runtime conditions
 (maintenance interstitial, slow load, not-found) that a production replay
 engine must handle explicitly rather than assume away.
@@ -136,7 +136,7 @@ def sub_account_confirm(
 
 # ---------------------------------------------------------------------------
 # Admin/demo controls: toggle runtime conditions for evidence generation.
-# Not part of the "product" surface — these simulate conditions a real core
+# Not part of the "product" surface - these simulate conditions a real core
 # system would produce on its own schedule.
 # ---------------------------------------------------------------------------
 

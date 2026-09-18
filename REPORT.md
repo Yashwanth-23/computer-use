@@ -1,7 +1,7 @@
 # System Design Report: Computer-Use Automation System
 
 **Candidate:** Yashwanth Vasireddy  
-**Role:** Applied AI Engineer — Hiring Automation (CEO's Office)  
+**Role:** Applied AI Engineer: Hiring Automation (CEO's Office)  
 **Target Domain:** Legacy Core Banking & Credit Union Servicing Platforms (Fiserv/Jack Henry/FIS-style)
 
 ---
@@ -13,7 +13,7 @@ The system implements the core operational paradigm:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ PHASE 1: DISCOVERY (Model-in-the-Loop — Executed Once)                 │
+│ PHASE 1: DISCOVERY (Model-in-the-Loop: Executed Once)                  │
 │ Goal + Target URL ──► Surface Observer ──► LLM Planner ──► Live Surface│
 │                                                │                       │
 │                                                ▼                       │
@@ -56,7 +56,7 @@ The system implements the core operational paradigm:
    * *Trade-Off*: Avoids vendor lock-in while guaranteeing evaluators can reproduce discovery runs without provisioning paid API keys.
 4. **Token-Efficient Interactive Observation vs. Raw DOM Dumps**:
    * *Decision*: Rather than flooding LLM context with the raw 50KB HTML tree each turn, `SurfaceObserver` parses the accessibility tree and extracts interactive controls (inputs, buttons, select, links, and balance grids) into a structured compact summary.
-   * *Trade-Off*: Keeps input token growth lean (~600–1000 tokens/turn) and discovery latency low (~1.2–2.9s) while providing 100% of required visual/functional affordances.
+   * *Trade-Off*: Keeps input token growth lean (~600-1000 tokens/turn) and discovery latency low (~1.2-2.9s) while providing 100% of required visual/functional affordances.
 
 ---
 

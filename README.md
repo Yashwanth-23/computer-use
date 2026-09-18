@@ -1,8 +1,8 @@
-﻿# Computer-Use Automation System
+# Computer-Use Automation System
 
 **A production-grade, record-once / replay-many automation layer designed for legacy banking applications without APIs.**
 
-Built for the **interface.ai Applied AI Engineer — Hiring Automation (CEO's Office)** take-home assignment.
+Built for the **interface.ai Applied AI Engineer: Hiring Automation (CEO's Office)** take-home assignment.
 
 ---
 
@@ -26,8 +26,8 @@ Built for the **interface.ai Applied AI Engineer — Hiring Automation (CEO's Of
 ### 2. Installation
 Clone the repository and install dependencies:
 ```bash
-git clone https://github.com/<your-username>/computer-use-automation.git
-cd computer-use-automation
+git clone https://github.com/Yashwanth-23/computer-use.git
+cd computer-use
 
 pip install -r requirements.txt
 playwright install chromium
@@ -35,7 +35,7 @@ playwright install chromium
 
 ### 3. API Keys & Live Services
 * **Running with an LLM Key**:
-  * Set `GEMINI_API_KEY` (Free tier from [Google AI Studio](https://aistudio.google.com/)) or `ANTHROPIC_API_KEY` (Claude 3.5 Sonnet).
+  * Set `GEMINI_API_KEY` (Free tier from [Google AI Studio](https://aistudio.google.com/)) or `ANTHROPIC_API_KEY` (Claude Sonnet 5).
 * **Running Without Any Keys (100% Offline / Standalone)**:
   * The system ships with a built-in goal-directed explorer (`SimulatedDiscoveryClient`). If no API key is present, discovery runs locally against the live browser, compiling real capability artifacts right out of the box with zero external dependencies.
 
@@ -62,7 +62,14 @@ python -m src.cli discover --goal "Look up member 1001 and read savings and chec
 ---
 
 ### Step 3: Run Deterministic Replay (Happy Path)
-Invoke the saved capability with input parameters (0 tokens, sub-second execution):
+Invoke the saved capability with input parameters (0 tokens, sub-second execution).
+
+You can run the self-booting helper (boots mock server automatically in one command):
+```bash
+python -m scripts.run_replay --member 1001 --headless
+```
+
+Or run via the direct CLI (with mock server running):
 ```bash
 python -m src.cli replay --artifact evidence/capability_member_lookup.json --input "{\"member_id\": \"1001\"}"
 ```
@@ -92,8 +99,10 @@ Executed 5 steps:
 ### Step 4: Replay an Expected Business Outcome (Member Not Found)
 Replay with non-existent member `9999`:
 ```bash
-python -m src.cli replay --artifact evidence/capability_member_lookup.json --input "{\"member_id\": \"9999\"}"
+python -m scripts.run_replay --member 9999 --headless
 ```
+*(Or via direct CLI: `python -m src.cli replay --artifact evidence/capability_member_lookup.json --input "{\"member_id\": \"9999\"}"`)*
+
 *Result Contract*: Returns `status="BUSINESS_OUTCOME"` with structured outcome `[MEMBER_NOT_FOUND]`. **This is an expected business result, not an unhandled exception or crash.**
 
 ---
@@ -102,7 +111,7 @@ python -m src.cli replay --artifact evidence/capability_member_lookup.json --inp
 * **Recoverable Interstitial**: Enable the simulated maintenance alert:
   ```bash
   curl -X POST http://127.0.0.1:8000/admin/maintenance/on
-  python -m src.cli replay --artifact evidence/capability_member_lookup.json --input "{\"member_id\": \"1001\"}"
+  python -m scripts.run_replay --member 1001 --headless
   ```
   *(The replay engine automatically detects the maintenance banner, clicks "Acknowledge", and successfully completes the flow).*
 * **Live Session Human Escalation**:
@@ -114,7 +123,7 @@ python -m src.cli replay --artifact evidence/capability_member_lookup.json --inp
 
 ## Automated Test Suite
 
-Run the full automated test suite (38 tests covering schemas, guardrails, locator fallbacks, error taxonomy, and escalation state machine):
+Run the full automated test suite (39 tests covering schemas, guardrails, locator fallbacks, error taxonomy, and escalation state machine):
 ```bash
 pytest tests/ -v
 ```
