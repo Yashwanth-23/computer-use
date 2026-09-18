@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
   "metadata": {
-    "id": "cap_db5741d09e1c",
+    "id": "cap_bd7b07558a4a",
     "name": "discovered_member_lookup",
     "version": "1.0.0",
     "app_id": "apex_core_v4",
     "tenant_id": null,
     "author": "discovery_agent",
-    "created_at": "2026-09-18T03:31:47.954323Z",
+    "created_at": "2026-09-18T03:55:41.295391Z",
     "review_status": "draft",
     "description": "Look up member 1001 and read savings and checking balances"
   },
