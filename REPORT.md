@@ -132,7 +132,7 @@ The system abstracts surface interactions via a unified protocol:
 Because the artifact schema stores semantic concepts (ActionType, Accessible Roles, Text Anchors) rather than browser-exclusive bindings, porting from Web to a legacy Citrix or Windows Core Console (e.g. Jack Henry SilverLake) requires only replacing the surface driver, leaving capability definitions intact.
 
 ### 2. Multi-Tenant Reuse at Scale
-*Note: Per Section 7 of the assignment brief, multi-tenant adaptability is evaluated as an architectural design specification. In our implemented V1 artifact schema (`src/schemas/artifact.py`), `CapabilityMetadata` defines `tenant_id: Optional[str] = None` and `app_id`. The overlay mechanism detailed below is our proposed V2 extension for tenant-specific delta patching without duplicating base capabilities:*
+*In the core V1 artifact schema (`src/schemas/artifact.py`), `CapabilityMetadata` defines `tenant_id: Optional[str] = None` and `app_id`. The overlay mechanism detailed below is the planned V2 specification for tenant-specific delta patching without duplicating base capabilities:*
 
 When 200 credit unions run the same core vendor application with divergent branding and custom fields:
 1. **Base Capability Inheritance**: A vendor-level base artifact (`app_id="fiserv_dna_v4"`, `tenant_id=None`) defines the canonical flow.
@@ -180,9 +180,9 @@ Escalation is not an uncaught exception; it is an architected state machine oper
 
 ---
 
-## 7. Cuts & Future Work
+## 7. Cuts
 
-### Deliberately Cut (In Accordance with Section 7 of the Brief)
+### Deliberately Cut for Production Focus
 1. **Premature Distributed Infrastructure**: Avoided Celery task queues, Redis brokers, and PostgreSQL database schemas to keep evaluation immediate, lightweight, and focused on core engine judgment.
 2. **Full WebRTC Co-Browsing Console**: The operator interface uses a robust CLI and in-session Playwright pause mechanism rather than a heavy real-time video streaming web portal.
 3. **Open-Ended Replay Self-Healing**: Did not permit arbitrary LLM re-prompting during replay failures. In financial servicing, silent model guessing on production core accounts creates severe compliance liabilities.
