@@ -52,3 +52,24 @@ def test_deterministic_replay_interstitial_recovery():
     # Confirm trace shows interstitial was dismissed
     assert any(trace.detail and "Dismissed" in trace.detail for trace in result.step_traces)
     requests.post("http://127.0.0.1:8000/admin/maintenance/off")
+
+
+def test_deterministic_replay_hard_failure_captures_screenshot_and_debug_context():
+    """Unresolvable element triggers HARD_FAILURE, capturing screenshot and DebugContext."""
+    import os
+    core_data.reset_all()
+    artifact = build_artifact()
+    # Break locator for step 2 deliberately to force hard failure
+    artifact.steps[1].locator.chain[0].value = "#ctl00_NonExistentElement_ThatDoesNotExist"
+    artifact.steps[1].locator.chain = [artifact.steps[1].locator.chain[0]]
+
+    executor = ReplayExecutor(headless=True, evidence_dir="evidence")
+    result = executor.run(artifact, inputs={"member_id": "1001"})
+
+    assert result.status == ReplayStatus.HARD_FAILURE
+    assert result.debug is not None
+    assert result.debug.failed_step_id == "step_2_enter_member_id"
+    assert result.debug.evidence_ref is not None
+    assert os.path.exists(result.debug.evidence_ref), f"Screenshot file must exist on disk: {result.debug.evidence_ref}"
+    assert "URL:" in result.debug.observed
+    assert result.outputs is None
