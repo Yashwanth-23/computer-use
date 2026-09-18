@@ -71,6 +71,8 @@ The capability artifact (`src/schemas/artifact.py`) is designed as an **agent-in
   $$\text{Stable ID} \longrightarrow \text{Accessible Role + Name} \longrightarrow \text{Spatial Label Proximity} \longrightarrow \text{Structural XPath}$$
   Each chain requires a mandatory `reasoning` field documenting *why* that priority was chosen. For example:
   > *"Structural ID is primary here because this simulates a legacy server-rendered app where IDs are compiler-generated and stable; on a modern SPA, the priority would invert toward accessible role/name as primary."*
+* **Semantic Extraction Fallbacks & Label Alignment Caveat**:  
+  Extraction fallbacks anchor to semantic table row headers (e.g. `tr:has(td:has-text("Savings")) >> span`) rather than dynamic data values, guaranteeing parameterized reusability across any member record. *Production Caveat*: The compiler tokenizes element IDs and descriptions to derive anchor text. In enterprise multi-tenant deployments where UI headers vary significantly across credit unions (e.g. "Share Savings" vs. "Savings Account"), a tenant label normalization mapping or discovery-time visual OCR anchor dictionary is recommended to maintain alignment.
 * **Strict Type Coercion & Placeholders**:  
   Inputs (`InputParameter`) and outputs (`OutputField`) enforce strict primitive typing (`string`, `number`, `boolean`, `enum`). Parameter placeholders (`{member_id}`) are resolved dynamically during replay, preventing hardcoded credentials or test values from polluting the capability.
 * **Structural Result Guarantees (`ExecutionResult`)**:  

@@ -81,6 +81,8 @@ The capability artifact (`src/schemas/artifact.py`) is designed as an **agent-in
   $$\text{Stable ID} \longrightarrow \text{Accessible Role + Name} \longrightarrow \text{Spatial Label Proximity} \longrightarrow \text{Structural XPath}$$
   Each chain requires a mandatory `reasoning` field documenting *why* that priority was chosen. For example:
   > *"Structural ID is primary here because this simulates a legacy server-rendered app where IDs are compiler-generated and stable; on a modern SPA, the priority would invert toward accessible role/name as primary."*
+* **Semantic Extraction Fallbacks & Label Alignment Caveat**:  
+  Extraction fallbacks anchor to semantic table row headers (e.g. `tr:has(td:has-text("Savings")) >> span`) rather than dynamic data values, guaranteeing parameterized reusability across any member record. *Production Caveat*: The compiler tokenizes element IDs and descriptions to derive anchor text. In enterprise multi-tenant deployments where UI headers vary significantly across credit unions (e.g. "Share Savings" vs. "Savings Account"), a tenant label normalization mapping or discovery-time visual OCR anchor dictionary is recommended to maintain alignment.
 * **Strict Type Coercion & Placeholders**:  
   Inputs (`InputParameter`) and outputs (`OutputField`) enforce strict primitive typing (`string`, `number`, `boolean`, `enum`). Parameter placeholders (`{member_id}`) are resolved dynamically during replay, preventing hardcoded credentials or test values from polluting the capability.
 * **Structural Result Guarantees (`ExecutionResult`)**:  
@@ -370,13 +372,13 @@ Path: `evidence/capability_member_lookup.json`
 {
   "schema_version": "1.0",
   "metadata": {
-    "id": "cap_c644938a3f5d",
+    "id": "cap_39a7425dc28f",
     "name": "discovered_member_lookup",
     "version": "1.0.0",
     "app_id": "apex_core_v4",
     "tenant_id": null,
     "author": "discovery_agent",
-    "created_at": "2026-09-18T03:06:29.133306Z",
+    "created_at": "2026-09-18T03:21:21.085852Z",
     "review_status": "draft",
     "description": "Look up member 1001 and read savings and checking balances"
   },
@@ -1381,7 +1383,7 @@ class HandoffState(BaseModel):
 Path: `src/engine/replay_executor.py`
 
 ```python
-﻿import os
+import os
 import re
 import time
 from datetime import datetime, timezone
@@ -1526,24 +1528,36 @@ class ReplayExecutor:
                         try:
                             loc_target, locator_res = resolve_locator(page, step.locator, timeout_per_candidate_ms=2500)
                         except LocatorResolutionError:
-                            # Check if an exceptional business outcome rule explains why locator was not found
-                            _, check_rule, check_msg = recovery_mgr.check_and_handle_conditions(page)
-                            if check_rule and check_rule.outcome_class == OutcomeClass.BUSINESS_OUTCOME:
-                                return ExecutionResult(
-                                    run_id=run_id,
-                                    capability_id=artifact.metadata.id,
-                                    capability_version=artifact.metadata.version,
-                                    status=ReplayStatus.BUSINESS_OUTCOME,
-                                    started_at=started_at,
-                                    finished_at=datetime.now(timezone.utc),
-                                    step_traces=traces,
-                                    business_outcome=BusinessOutcomeDetail(
-                                        outcome_code=check_rule.outcome_code,
-                                        matched_rule_id=check_rule.rule_id,
-                                        message=check_msg or check_rule.description,
+                            # 1. Reactive check: check if a slow-loading interstitial blocked the target element
+                            recovered, rec_rule, rec_msg = recovery_mgr.check_and_handle_conditions(page, timeout_per_candidate_ms=1500)
+                            if recovered:
+                                traces.append(StepTrace(
+                                    step_id=step.step_id,
+                                    outcome=StepOutcome.OK,
+                                    started_at=datetime.now(timezone.utc),
+                                    duration_ms=round((time.perf_counter() - step_start) * 1000, 2),
+                                    detail=f"Dismissed late interstitial: {rec_rule.description}",
+                                ))
+                                # Retry resolving target locator after dismissal
+                                loc_target, locator_res = resolve_locator(page, step.locator, timeout_per_candidate_ms=2500)
+                            else:
+                                # 2. Check if an exceptional business outcome rule explains why locator was not found
+                                if rec_rule and rec_rule.outcome_class == OutcomeClass.BUSINESS_OUTCOME:
+                                    return ExecutionResult(
+                                        run_id=run_id,
+                                        capability_id=artifact.metadata.id,
+                                        capability_version=artifact.metadata.version,
+                                        status=ReplayStatus.BUSINESS_OUTCOME,
+                                        started_at=started_at,
+                                        finished_at=datetime.now(timezone.utc),
+                                        step_traces=traces,
+                                        business_outcome=BusinessOutcomeDetail(
+                                            outcome_code=rec_rule.outcome_code,
+                                            matched_rule_id=rec_rule.rule_id,
+                                            message=rec_msg or rec_rule.description,
+                                        )
                                     )
-                                )
-                            raise
+                                raise
 
                     # Execute concrete action
                     if step.action == ActionType.NAVIGATE:
@@ -1867,8 +1881,15 @@ class RecoveryManager:
     def __init__(self, rules: list[ExceptionalRule]):
         self.rules = rules
 
-    def check_and_handle_conditions(self, page: Page) -> Tuple[bool, ExceptionalRule | None, str | None]:
+    def check_and_handle_conditions(
+        self, page: Page, timeout_per_candidate_ms: int = 150
+    ) -> Tuple[bool, ExceptionalRule | None, str | None]:
         """Scans the page for any matching ExceptionalRule signatures.
+
+        Args:
+            page: Active Playwright page.
+            timeout_per_candidate_ms: Per-candidate wait timeout (default: 150ms for routine
+                fast-path checks, 1500ms for reactive recovery checks when action is blocked).
 
         Returns:
             (was_recovered: bool, matched_rule: ExceptionalRule | None, detail_message: str | None)
@@ -1880,7 +1901,7 @@ class RecoveryManager:
             # 1. Check locator signature if defined
             if rule.signature.locator:
                 try:
-                    loc, _ = resolve_locator(page, rule.signature.locator, timeout_per_candidate_ms=150)
+                    loc, _ = resolve_locator(page, rule.signature.locator, timeout_per_candidate_ms=timeout_per_candidate_ms)
                     if loc.is_visible():
                         matched = True
                         extracted_text = loc.inner_text().strip()
@@ -2596,6 +2617,38 @@ from src.schemas.artifact import (
 )
 
 
+import re
+
+
+def extract_semantic_field_label(element_id: str, desc: str = "") -> str:
+    """Derives a semantic label anchor from an element ID or description.
+    
+    Generalizes across arbitrary field types without hardcoding:
+    - lblMemberName -> 'Name'
+    - lblStatus -> 'Status'
+    - lblSavingsBalance -> 'Savings'
+    - 'Extract output account_type' -> 'Account'
+    """
+    if desc:
+        m = re.search(r"Extract output\s+([a-zA-Z0-9_]+)", desc, re.IGNORECASE)
+        if m:
+            raw = m.group(1).replace("_", " ").strip()
+            parts = raw.split()
+            if parts:
+                return parts[0].capitalize()
+
+    if element_id:
+        tail = element_id.split("_")[-1]
+        cleaned = re.sub(r"^(lbl|txt|btn|chk|ddl|gv|val|sp)", "", tail, flags=re.IGNORECASE)
+        tokens = re.findall(r"[A-Z][a-z]*", cleaned)
+        if tokens:
+            return tokens[0]
+        if cleaned:
+            return cleaned.capitalize()
+
+    return ""
+
+
 def compile_capability_from_trace(
     capability_name: str,
     description: str,
@@ -2627,8 +2680,9 @@ def compile_capability_from_trace(
 
             is_extract = action_type == ActionType.EXTRACT
             acc_name = (el.get("accessible_name") or "").strip()
-            # If the accessible name looks like dynamic data (currency, numeric value, or extraction step),
-            # never bake it into locator candidates.
+            # If the step is an extraction step, the element contains output data (name, balance, status),
+            # so its text content or accessible_name is NEVER a reliable locator anchor.
+            # Similarly, for interactive steps, if accessible_name contains currency or raw digits, it's dynamic data.
             is_dynamic_value = (
                 is_extract
                 or acc_name.startswith("$")
@@ -2645,12 +2699,12 @@ def compile_capability_from_trace(
 
             # 3. Fallback: Label proximity
             if is_extract:
-                field_hint = "Savings" if "savings" in el.get("element_id", "").lower() else ("Checking" if "checking" in el.get("element_id", "").lower() else "")
-                if field_hint:
+                label_anchor = extract_semantic_field_label(el.get("element_id", ""), s.get("checkpoint_desc", ""))
+                if label_anchor:
                     candidates.append(LocatorCandidate(
                         strategy=LocatorStrategy.LABEL_PROXIMITY,
-                        value=f"tr:has(td:has-text(\"{field_hint}\")) >> span",
-                        note=f"Positioned relative to '{field_hint}' row header without value dependency."
+                        value=f"tr:has(td:has-text(\"{label_anchor}\")) >> span",
+                        note=f"Positioned relative to '{label_anchor}' row header without value dependency."
                     ))
             elif acc_name and not is_dynamic_value:
                 candidates.append(LocatorCandidate(
@@ -2948,24 +3002,24 @@ if __name__ == "__main__":
 Path: `evidence/discovery_run.log`
 
 ```text
-=== DISCOVERY RUN INITIATED: 2026-09-18T03:06:21.993459+00:00 ===
+=== DISCOVERY RUN INITIATED: 2026-09-18T03:21:04.342435+00:00 ===
 GOAL: Look up member 1001 and read savings and checking balances
 TARGET ENTRY: http://127.0.0.1:8000/portal/member-lookup
 PROVIDER: AnthropicClient (Model: claude-sonnet-5)
 ----------------------------------------------------------------------
 [Step 0] NAVIGATE to http://127.0.0.1:8000/portal/member-lookup
-[Step 1] Model: claude-sonnet-5 (Latency: 1554.0ms | Tokens: in=616, out=64)
-  Thought: I need to type the member ID 1001 into the search field first.
+[Step 1] Model: claude-sonnet-5 (Latency: 1643.2ms | Tokens: in=616, out=74)
+  Thought: I need to enter the member ID 1001 into the Member ID field to search for the member's record.
   Action:  TYPE {'element_index': 1, 'value': '1001', 'parameter_name': 'member_id'}
-[Step 2] Model: claude-sonnet-5 (Latency: 1825.1ms | Tokens: in=653, out=39)
-  Thought: Now click the search button to look up member 1001
+[Step 2] Model: claude-sonnet-5 (Latency: 6827.5ms | Tokens: in=653, out=48)
+  Thought: Now that the member ID is entered, click the search button to look up the member record.
   Action:  CLICK {'element_index': 2}
-[Step 3] Model: claude-sonnet-5 (Latency: 2128.4ms | Tokens: in=1028, out=152)
-  Thought: The member lookup results show savings balance ($24500.00) at element #5 and checking balance ($4120.00) at element #6. This satisfies the goal.
+[Step 3] Model: claude-sonnet-5 (Latency: 6638.2ms | Tokens: in=1028, out=129)
+  Thought: Found the member's savings and checking balances. Ready to finish with the extracted values.
   Action:  FINISH {'outputs': {'savings_balance': {'element_index': 5, 'type': 'number', 'transform': 'strip_currency_symbol'}, 'checking_balance': {'element_index': 6, 'type': 'number', 'transform': 'strip_currency_symbol'}}}
 Goal reported complete. Finishing discovery.
 ----------------------------------------------------------------------
-Capability artifact compiled successfully: ID=cap_c644938a3f5d (Version 1.0.0)
+Capability artifact compiled successfully: ID=cap_39a7425dc28f (Version 1.0.0)
 Steps: 5 | Inputs: 1 | Outputs: 2
 === DISCOVERY COMPLETED ===
 
@@ -2978,20 +3032,20 @@ Path: `evidence/replay_success.log`
 
 ```text
 === REPLAY LOG: SUCCESS (0 TOKENS, DETERMINISTIC) ===
-TIMESTAMP:   2026-09-18T03:06:02.093062+00:00
-RUN ID:      run_f21849d972e7
+TIMESTAMP:   2026-09-18T03:20:47.823002+00:00
+RUN ID:      run_26b57fc0ce5b
 STATUS:      SUCCESS
-CAPABILITY:  cap_6430e8ad2172 (v1.0.0)
+CAPABILITY:  cap_b9eff2db6046 (v1.0.0)
 OUTPUTS:     {
   "savings_balance": 24500.0,
   "checking_balance": 4120.0
 }
 STEP TRACES:
-  * step_1_navigate           (982.5ms) 
-  * step_2_type               (967.6ms) [stable_id candidate=0]
-  * step_3_click              (995.0ms) [stable_id candidate=0]
-  * step_4_extract            (963.6ms) [stable_id candidate=0]
-  * step_5_extract            (939.6ms) [stable_id candidate=0]
+  * step_1_navigate           (993.6ms) 
+  * step_2_type               (993.0ms) [stable_id candidate=0]
+  * step_3_click              (1016.2ms) [stable_id candidate=0]
+  * step_4_extract            (954.7ms) [stable_id candidate=0]
+  * step_5_extract            (954.1ms) [stable_id candidate=0]
 =====================================================
 
 ```
@@ -3003,16 +3057,16 @@ Path: `evidence/replay_business_outcome_404.log`
 
 ```text
 === REPLAY LOG: EXPECTED BUSINESS OUTCOME (NOT A CRASH) ===
-TIMESTAMP:   2026-09-18T03:06:05.279508+00:00
-RUN ID:      run_f4ca8966c539
+TIMESTAMP:   2026-09-18T03:20:51.020319+00:00
+RUN ID:      run_0c4583301450
 STATUS:      BUSINESS_OUTCOME
 OUTCOME:     [MEMBER_NOT_FOUND]
 RULE ID:     rule_member_not_found
 MESSAGE:     Member Record Not Found in Fiserv Core for ID: 9999
 STEP TRACES:
-  * step_1_navigate           (986.5ms) 
-  * step_2_type               (968.1ms) [stable_id candidate=0]
-  * step_3_click              (577.0ms) [stable_id candidate=0] - Business outcome detected: MEMBER_NOT_FOUND
+  * step_1_navigate           (982.9ms) 
+  * step_2_type               (978.4ms) [stable_id candidate=0]
+  * step_3_click              (559.3ms) [stable_id candidate=0] - Business outcome detected: MEMBER_NOT_FOUND
 =====================================================
 
 ```
@@ -3024,19 +3078,19 @@ Path: `evidence/replay_interstitial_recovery.log`
 
 ```text
 === REPLAY LOG: RECOVERABLE CONDITION RECOVERY ===
-TIMESTAMP:   2026-09-18T03:06:11.182203+00:00
-RUN ID:      run_b4adc3374097
+TIMESTAMP:   2026-09-18T03:20:56.928397+00:00
+RUN ID:      run_57ab87bd8e85
 STATUS:      RECOVERED
 OUTPUTS:     {
   "savings_balance": 24500.0,
   "checking_balance": 4120.0
 }
 STEP TRACES (Showing Dismissal Action):
-  * step_1_navigate           (904.4ms)  - Dismissed interstitial: System maintenance popup appeared; dismiss to continue.
-  * step_2_type               (962.1ms) [stable_id candidate=0]
-  * step_3_click              (1010.9ms) [stable_id candidate=0]
-  * step_4_extract            (954.7ms) [stable_id candidate=0]
-  * step_5_extract            (942.5ms) [stable_id candidate=0]
+  * step_1_navigate           (899.3ms)  - Dismissed interstitial: System maintenance popup appeared; dismiss to continue.
+  * step_2_type               (961.7ms) [stable_id candidate=0]
+  * step_3_click              (987.1ms) [stable_id candidate=0]
+  * step_4_extract            (952.9ms) [stable_id candidate=0]
+  * step_5_extract            (952.4ms) [stable_id candidate=0]
 =====================================================
 
 ```
@@ -3048,16 +3102,16 @@ Path: `evidence/replay_escalation_handoff.log`
 
 ```text
 === HUMAN-IN-THE-LOOP ESCALATION & HANDOFF AUDIT TRAIL ===
-TIMESTAMP:       2026-09-18T03:06:11.974614+00:00
-INCIDENT ID:     esc_4208f8315473
+TIMESTAMP:       2026-09-18T03:20:57.704302+00:00
+INCIDENT ID:     esc_bdc0ce53feab
 REASON:          risky_step_approval
 EXPLANATION:     Policy Gate: Opening holiday club sub-account is classified as RISKY_IRREVERSIBLE.
 PROPOSED ACTION: Open HOLIDAY_CLUB sub-account for member 1001 ($50.00 deposit)
-SCREENSHOT REF:  evidence/screenshots\escalation_run_evid_step_confirm_sub_account_20260918_030611.png
+SCREENSHOT REF:  evidence/screenshots\escalation_run_evid_step_confirm_sub_account_20260918_032057.png
 SESSION ID:      sess_live_core
 FINAL STATE:     automation_running
 OPERATOR ACTIONS RECORDED ON LIVE SESSION:
-  * [2026-09-18T03:06:11.974563+00:00] Operator resolved via custom handler: Human operator configured sub-account product and navigated to review confirmation
+  * [2026-09-18T03:20:57.704243+00:00] Operator resolved via custom handler: Human operator configured sub-account product and navigated to review confirmation
 =========================================================
 
 ```
