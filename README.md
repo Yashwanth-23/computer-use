@@ -2,8 +2,6 @@
 
 **A production-grade, record-once / replay-many automation layer designed for legacy banking applications without APIs.**
 
-Built for the **interface.ai Applied AI Engineer: Hiring Automation (CEO's Office)** take-home assignment.
-
 ---
 
 ## Core Philosophy
@@ -35,7 +33,7 @@ playwright install chromium
 
 ### 3. API Keys & Live Services
 * **Running with an LLM Key**:
-  * Set `ANTHROPIC_API_KEY` or `GEMINI_API_KEY` in your environment.
+  * Set your preferred LLM provider API key in your environment (e.g. Anthropic, OpenAI, Kimi, Gemini, or any compatible frontier provider).
 * **Running Without Any Keys (100% Offline / Standalone)**:
   * The system ships with a built-in goal-directed explorer (`SimulatedDiscoveryClient`). If no API key is present, discovery runs locally against the live browser, compiling real capability artifacts right out of the box with zero external dependencies.
 
@@ -123,7 +121,7 @@ python -m scripts.run_replay --member 9999 --headless
 
 ## Automated Test Suite
 
-Run the full automated test suite (39 tests covering schemas, guardrails, locator fallbacks, error taxonomy, and escalation state machine):
+Run the full automated test suite (40 tests covering schemas, guardrails, locator fallbacks, error taxonomy, and escalation state machine):
 ```bash
 pytest tests/ -v
 ```

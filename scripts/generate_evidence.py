@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 import time
 import threading
@@ -18,7 +18,7 @@ from playwright.sync_api import sync_playwright
 
 
 def main():
-    print("=== Generating interface.ai Take-Home Evidence Suite ===")
+    print("=== Generating Computer-Use Automation Evidence Suite ===")
     os.makedirs("evidence/screenshots", exist_ok=True)
 
     # 1. Start mock server in background thread

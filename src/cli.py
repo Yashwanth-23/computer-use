@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 import json
 import argparse
 import uvicorn
@@ -91,7 +91,7 @@ def cmd_replay(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="interface.ai Computer-Use Automation System")
+    parser = argparse.ArgumentParser(description="Computer-Use Automation System")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # serve-mock
@@ -106,7 +106,12 @@ def main():
     p_disc.add_argument("--name", type=str, default="lookup_member_balance")
     p_disc.add_argument("--output", type=str, default="evidence/capability_member_lookup.json")
     p_disc.add_argument("--log", type=str, default="evidence/discovery_run.log")
-    p_disc.add_argument("--provider", type=str, choices=["gemini", "anthropic", "simulated"], default=None)
+    p_disc.add_argument(
+        "--provider",
+        type=str,
+        choices=["gemini", "anthropic", "openai", "kimi", "moonshot", "simulated"],
+        default=None,
+    )
     p_disc.add_argument("--max-steps", type=int, default=8)
     p_disc.add_argument("--headed", action="store_true", help="Launch browser in headed mode")
     p_disc.set_defaults(func=cmd_discover)

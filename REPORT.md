@@ -1,7 +1,7 @@
 # System Design Report: Computer-Use Automation System
 
-**Candidate:** Yashwanth Vasireddy  
-**Role:** Applied AI Engineer: Hiring Automation (CEO's Office)  
+**Author:** Yashwanth Vasireddy  
+**Project:** Autonomous Computer-Use Automation System for Legacy Enterprise Surfaces  
 **Target Domain:** Legacy Core Banking & Credit Union Servicing Platforms (Fiserv/Jack Henry/FIS-style)
 
 ---

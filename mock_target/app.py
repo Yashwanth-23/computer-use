@@ -2,7 +2,7 @@
 ApexCore Banking Portal: a standalone, intentionally legacy-styled mock
 banking back-office application.
 
-Purpose: this is the proxy target for the interface.ai take-home. It exists
+Purpose: this is the proxy target for evaluating computer-use automation. It exists
 so the computer-use agent has a *real, hostile-but-honest* UI surface to
 drive: nested tables, non-semantic markup, ASP.NET-style control IDs,
 server-rendered pages, no test IDs, and a couple of runtime conditions

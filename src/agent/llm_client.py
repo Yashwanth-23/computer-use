@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import json
 import subprocess
@@ -153,10 +153,90 @@ class SimulatedDiscoveryClient(LLMClient):
         }
 
 
+class OpenAICompatibleClient(LLMClient):
+    """Frontier LLM driver supporting OpenAI, Kimi (Moonshot), DeepSeek, and OpenAI-compatible APIs."""
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        model: Optional[str] = None,
+    ):
+        import requests
+        self._requests = requests
+        self.api_key = (
+            api_key
+            or os.environ.get("OPENAI_API_KEY")
+            or os.environ.get("KIMI_API_KEY")
+            or os.environ.get("MOONSHOT_API_KEY")
+        )
+        if not self.api_key:
+            raise ValueError("No OpenAI/Kimi API key found in environment.")
+
+        is_kimi = bool(os.environ.get("KIMI_API_KEY") or os.environ.get("MOONSHOT_API_KEY"))
+        default_base = "https://api.moonshot.cn/v1" if is_kimi else "https://api.openai.com/v1"
+        self.base_url = (
+            base_url
+            or os.environ.get("OPENAI_BASE_URL")
+            or os.environ.get("OPENAI_API_BASE")
+            or default_base
+        ).rstrip("/")
+
+        default_model = "moonshot-v1-8k" if is_kimi else "gpt-4o"
+        self.model = model or os.environ.get("OPENAI_MODEL") or default_model
+
+    def decide_next_action(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0.0,
+            "response_format": {"type": "json_object"},
+        }
+        resp = self._requests.post(
+            f"{self.base_url}/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=60,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        content_text = data["choices"][0]["message"]["content"]
+
+        usage = {
+            "input_tokens": data.get("usage", {}).get("prompt_tokens", 0),
+            "output_tokens": data.get("usage", {}).get("completion_tokens", 0),
+        }
+
+        m = re.search(r"\{.*\}", content_text, re.DOTALL)
+        if m:
+            decision = json.loads(m.group(0))
+            decision["_model"] = self.model
+            decision["_usage"] = usage
+            return decision
+        raise ValueError(f"Failed to parse JSON action from response: {content_text}")
+
+
 def get_llm_client(provider: Optional[str] = None) -> LLMClient:
     """Factory selecting the appropriate LLM client based on available environment keys."""
     if provider == "anthropic" or (not provider and get_anthropic_key()):
         return AnthropicClient()
+    elif provider in {"openai", "kimi", "moonshot"} or (
+        not provider
+        and (
+            os.environ.get("OPENAI_API_KEY")
+            or os.environ.get("KIMI_API_KEY")
+            or os.environ.get("MOONSHOT_API_KEY")
+        )
+    ):
+        return OpenAICompatibleClient()
     elif provider == "gemini" or (not provider and os.environ.get("GEMINI_API_KEY")):
         return GeminiClient()
     return SimulatedDiscoveryClient()
+
