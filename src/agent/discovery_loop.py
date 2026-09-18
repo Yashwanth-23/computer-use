@@ -1,4 +1,5 @@
 ﻿import os
+import re
 import time
 import logging
 from datetime import datetime, timezone
@@ -22,9 +23,9 @@ Your objective is to accomplish the user's natural language goal by observing th
 
 You can take one of the following actions:
 - CLICK: click an element by index. Format: {"thought": "...", "action": "CLICK", "element_index": N}
-- TYPE: fill an input by index. Format: {"thought": "...", "action": "TYPE", "element_index": N, "value": "...", "parameter_name": "..."}
+- TYPE: fill an input by index. Format: {"thought": "...", "action": "TYPE", "element_index": N, "value": "...", "parameter_name": "member_id"}
 - NAVIGATE: go to URL. Format: {"thought": "...", "action": "NAVIGATE", "url": "..."}
-- FINISH: when the goal is achieved. Format: {"thought": "...", "action": "FINISH", "outputs": {"name": {"element_id": "...", "type": "number", "transform": "strip_currency_symbol"}}}
+- FINISH: when the goal is achieved. Format: {"thought": "...", "action": "FINISH", "outputs": {"savings_balance": {"element_index": 5, "type": "number", "transform": "strip_currency_symbol"}, "checking_balance": {"element_index": 6, "type": "number", "transform": "strip_currency_symbol"}}}
 
 Respond strictly with a valid JSON object.
 """
@@ -50,11 +51,12 @@ Respond strictly with a valid JSON object.
         inputs_meta = []
         outputs_meta = []
 
+        model_name = getattr(llm, "model", type(llm).__name__)
         log_entries = [
             f"=== DISCOVERY RUN INITIATED: {datetime.now(timezone.utc).isoformat()} ===",
             f"GOAL: {goal}",
             f"TARGET ENTRY: {target_url}",
-            f"PROVIDER: {type(llm).__name__}",
+            f"PROVIDER: {type(llm).__name__} (Model: {model_name})",
             "----------------------------------------------------------------------"
         ]
 
@@ -93,23 +95,35 @@ Respond strictly with a valid JSON object.
 
                     action = decision.get("action", "").upper()
                     thought = decision.get("thought", "")
-                    log_entries.append(f"[Step {step_num}] Thought: {thought} (Latency: {latency}ms)")
-                    log_entries.append(f"[Step {step_num}] Action: {action} args={decision}")
+                    usage = decision.get("_usage")
+                    usage_str = f" | Tokens: in={usage['input_tokens']}, out={usage['output_tokens']}" if usage else ""
+
+                    log_entries.append(f"[Step {step_num}] Model: {model_name} (Latency: {latency}ms{usage_str})")
+                    log_entries.append(f"  Thought: {thought}")
+                    log_entries.append(f"  Action:  {action} (args: {decision})")
 
                     # 3. ACT
                     if action == "FINISH":
                         if "outputs" in decision:
                             for out_name, out_cfg in decision["outputs"].items():
+                                raw_target = str(out_cfg.get("element_index") or out_cfg.get("element_id") or "")
+                                target_el = None
+                                if raw_target.isdigit():
+                                    target_el = next((e for e in elements if e.index == int(raw_target)), None)
+                                elif raw_target:
+                                    target_el = next((e for e in elements if e.element_id == raw_target), None)
+
+                                real_id = target_el.element_id if (target_el and target_el.element_id) else raw_target
+
                                 outputs_meta.append({
                                     "name": out_name,
-                                    "element_id": out_cfg["element_id"],
+                                    "element_id": real_id,
                                     "type": out_cfg.get("type", "number"),
                                     "transform": out_cfg.get("transform", "strip_currency_symbol")
                                 })
-                                # Add extraction step for artifact completeness
                                 steps_record.append({
                                     "action": "EXTRACT",
-                                    "element": {"element_id": out_cfg["element_id"]},
+                                    "element": target_el.__dict__ if target_el else {"element_id": real_id},
                                     "checkpoint_desc": f"Extract output {out_name}"
                                 })
                         log_entries.append("Goal reported complete. Finishing discovery.")
@@ -132,7 +146,8 @@ Respond strictly with a valid JSON object.
                     elif action == "TYPE":
                         el_idx = decision.get("element_index")
                         val = decision.get("value", "")
-                        param_name = decision.get("parameter_name")
+                        raw_param = decision.get("parameter_name") or "member_id"
+                        param_name = re.sub(r"[^a-zA-Z0-9_]", "_", raw_param.strip()).lower().strip("_")
 
                         target_el = next((e for e in elements if e.index == el_idx), None)
                         if not target_el:
@@ -141,8 +156,8 @@ Respond strictly with a valid JSON object.
                         page.locator(target_el.selector).first.fill(val)
                         action_history.append(f"TYPE '{val}' into #{el_idx} ({target_el.selector})")
 
-                        input_placeholder = f"{{{param_name}}}" if param_name else val
-                        if param_name and not any(p["name"] == param_name for p in inputs_meta):
+                        input_placeholder = f"{{{param_name}}}"
+                        if not any(p["name"] == param_name for p in inputs_meta):
                             inputs_meta.append({
                                 "name": param_name,
                                 "type": "string",
@@ -155,10 +170,10 @@ Respond strictly with a valid JSON object.
                             "action": "TYPE",
                             "element": target_el.__dict__,
                             "input_value": input_placeholder,
-                            "checkpoint_desc": f"Entered {param_name or 'value'}"
+                            "checkpoint_desc": f"Entered {param_name}"
                         })
 
-                    page.wait_for_timeout(300)
+                    page.wait_for_timeout(400)
 
             finally:
                 browser.close()

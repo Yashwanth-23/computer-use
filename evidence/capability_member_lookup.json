@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
   "metadata": {
-    "id": "cap_6fa4412fcfea",
+    "id": "cap_7b0e8ea9721b",
     "name": "discovered_member_lookup",
     "version": "1.0.0",
     "app_id": "apex_core_v4",
     "tenant_id": null,
     "author": "discovery_agent",
-    "created_at": "2026-09-18T01:17:20.966730Z",
+    "created_at": "2026-09-18T02:39:22.913420Z",
     "review_status": "draft",
     "description": "Look up member 1001 and read savings and checking balances"
   },
@@ -152,6 +152,21 @@
             "strategy": "stable_id",
             "value": "#ctl00_MainContent_gvBalances_ctl02_lblSavingsBalance",
             "note": "Server-generated ASP.NET control ID; durable within release."
+          },
+          {
+            "strategy": "accessible_role_name",
+            "value": "role=span[name=\"$24500.00\"]",
+            "note": "Resilient across control-prefix shifts if label text remains constant."
+          },
+          {
+            "strategy": "label_proximity",
+            "value": "label:has-text(\"$24500.00\") >> xpath=following::input[1]",
+            "note": "Layout anchor if ID and name attributes change."
+          },
+          {
+            "strategy": "structural_path",
+            "value": "//body/table[2]/tbody[1]/tr[1]/td[1]/table[2]/tbody[1]/tr[1]/td[2]/table[1]/tbody[1]/tr[1]/td[1]/span[1]",
+            "note": "Structural DOM position fallback."
           }
         ],
         "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to accessible role/name and spatial label proximity if IDs change across releases."
@@ -172,6 +187,21 @@
             "strategy": "stable_id",
             "value": "#ctl00_MainContent_gvBalances_ctl03_lblCheckingBalance",
             "note": "Server-generated ASP.NET control ID; durable within release."
+          },
+          {
+            "strategy": "accessible_role_name",
+            "value": "role=span[name=\"$4120.00\"]",
+            "note": "Resilient across control-prefix shifts if label text remains constant."
+          },
+          {
+            "strategy": "label_proximity",
+            "value": "label:has-text(\"$4120.00\") >> xpath=following::input[1]",
+            "note": "Layout anchor if ID and name attributes change."
+          },
+          {
+            "strategy": "structural_path",
+            "value": "//body/table[2]/tbody[1]/tr[1]/td[1]/table[2]/tbody[1]/tr[2]/td[2]/table[1]/tbody[1]/tr[1]/td[1]/span[1]",
+            "note": "Structural DOM position fallback."
           }
         ],
         "reasoning": "Priority starts with server-generated control IDs durable in legacy banking apps. Falls back to accessible role/name and spatial label proximity if IDs change across releases."

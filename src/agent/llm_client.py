@@ -1,7 +1,22 @@
 ﻿import os
 import re
 import json
+import subprocess
 from typing import Optional, Dict, Any, List
+
+
+def get_anthropic_key() -> Optional[str]:
+    """Retrieve Anthropic API key from process env or Windows User env."""
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if not key:
+        try:
+            cmd = "powershell -Command \"[System.Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')\""
+            key = subprocess.check_output(cmd, shell=True).decode().strip()
+            if key:
+                os.environ["ANTHROPIC_API_KEY"] = key
+        except Exception:
+            pass
+    return key
 
 
 class LLMClient:
@@ -12,29 +27,52 @@ class LLMClient:
 
 
 class AnthropicClient(LLMClient):
+    """Production frontier LLM driver using Anthropic Claude Sonnet 5."""
+
     def __init__(self, api_key: Optional[str] = None):
         import anthropic
-        self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+        self.api_key = api_key or get_anthropic_key()
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY not found in environment.")
         self.client = anthropic.Anthropic(api_key=self.api_key)
+        self.model = "claude-sonnet-5"
 
     def decide_next_action(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
         response = self.client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=1000,
+            model=self.model,
+            max_tokens=2000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
-        content = response.content[0].text
+
+        content_text = ""
+        thinking_text = ""
+        for block in response.content:
+            if getattr(block, "type", None) == "thinking" or hasattr(block, "thinking"):
+                thinking_text += getattr(block, "thinking", "")
+            elif getattr(block, "type", None) == "text" or hasattr(block, "text"):
+                content_text += getattr(block, "text", "")
+
+        usage = {
+            "input_tokens": getattr(response.usage, "input_tokens", 0),
+            "output_tokens": getattr(response.usage, "output_tokens", 0),
+        }
+
         # Parse JSON from response
-        m = re.search(r"\{.*\}", content, re.DOTALL)
+        m = re.search(r"\{.*\}", content_text, re.DOTALL)
         if m:
-            return json.loads(m.group(0))
-        raise ValueError(f"Failed to parse JSON action from Claude response: {content}")
+            data = json.loads(m.group(0))
+            data["_model"] = self.model
+            data["_usage"] = usage
+            if thinking_text and not data.get("thought"):
+                data["thought"] = thinking_text.strip()[:200]
+            return data
+        raise ValueError(f"Failed to parse JSON action from Claude Sonnet 5 response: {content_text}")
 
 
 class GeminiClient(LLMClient):
+    """Frontier LLM driver using Google Gemini."""
+
     def __init__(self, api_key: Optional[str] = None):
         from google import genai
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
@@ -51,7 +89,9 @@ class GeminiClient(LLMClient):
         content = response.text
         m = re.search(r"\{.*\}", content, re.DOTALL)
         if m:
-            return json.loads(m.group(0))
+            data = json.loads(m.group(0))
+            data["_model"] = "gemini-2.5-flash"
+            return data
         raise ValueError(f"Failed to parse JSON action from Gemini response: {content}")
 
 
@@ -115,7 +155,7 @@ class SimulatedDiscoveryClient(LLMClient):
 
 def get_llm_client(provider: Optional[str] = None) -> LLMClient:
     """Factory selecting the appropriate LLM client based on available environment keys."""
-    if provider == "anthropic" or (not provider and os.environ.get("ANTHROPIC_API_KEY")):
+    if provider == "anthropic" or (not provider and get_anthropic_key()):
         return AnthropicClient()
     elif provider == "gemini" or (not provider and os.environ.get("GEMINI_API_KEY")):
         return GeminiClient()
