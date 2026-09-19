@@ -346,7 +346,7 @@ def main():
                 "name": lookup_artifact.metadata.name,
                 "version": lookup_artifact.metadata.version,
                 "sha256": sha256_canonical("evidence/capability_member_lookup.json"),
-                "provenance": "Compiled from genuine Claude 3.5 Sonnet discovery run (see evidence/discovery_run.log)",
+                "provenance": "Compiled from genuine Claude Sonnet 5 discovery run (see evidence/discovery_run.log)",
             },
             {
                 "path": "evidence/capability_open_subaccount.json",
@@ -362,10 +362,10 @@ def main():
                 "log_file": "evidence/discovery_run.log",
                 "capability_id": lookup_artifact.metadata.id,
                 "mode": "genuine_model_discovery",
-                "model": "claude-3-5-sonnet",
+                "model": "claude-sonnet-5",
                 "status": "COMPLETED",
                 "sha256": sha256_canonical("evidence/discovery_run.log"),
-                "description": "Autonomous discovery against hostile ASP.NET banking portal using Claude 3.5 Sonnet",
+                "description": "Autonomous discovery against hostile ASP.NET banking portal using Claude Sonnet 5",
             },
             {
                 "log_file": "evidence/replay_success.log",

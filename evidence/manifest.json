@@ -14,7 +14,7 @@
       "name": "discovered_member_lookup",
       "version": "1.0.0",
       "sha256": "d8eb778d1e2984411224d85a5ef5442d258a86c9d90bd83228afe1d6e640ec74",
-      "provenance": "Compiled from genuine Claude 3.5 Sonnet discovery run (see evidence/discovery_run.log)"
+      "provenance": "Compiled from genuine Claude Sonnet 5 discovery run (see evidence/discovery_run.log)"
     },
     {
       "path": "evidence/capability_open_subaccount.json",
@@ -30,10 +30,10 @@
       "log_file": "evidence/discovery_run.log",
       "capability_id": "cap_bfa2d82803e3",
       "mode": "genuine_model_discovery",
-      "model": "claude-3-5-sonnet",
+      "model": "claude-sonnet-5",
       "status": "COMPLETED",
       "sha256": "bb2ab426279b287f3d7c17e75be6d452fd6a7183eb4f76bbf2aec95f19911689",
-      "description": "Autonomous discovery against hostile ASP.NET banking portal using Claude 3.5 Sonnet"
+      "description": "Autonomous discovery against hostile ASP.NET banking portal using Claude Sonnet 5"
     },
     {
       "log_file": "evidence/replay_success.log",

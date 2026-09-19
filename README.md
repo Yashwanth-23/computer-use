@@ -34,7 +34,7 @@ playwright install chromium
 ### 3. API Keys & Execution Modes
 * **Running with an LLM Provider**:
   Set the corresponding environment variable for your target frontier provider:
-  * **Anthropic**: `export ANTHROPIC_API_KEY="sk-ant-..."` (used for the canonical Claude 3.5 Sonnet discovery run)
+  * **Anthropic**: `export ANTHROPIC_API_KEY="sk-ant-..."` (used for the canonical Claude Sonnet 5 discovery run)
   * **OpenAI**: `export OPENAI_API_KEY="sk-proj-..."`
   * **Google Gemini**: `export GEMINI_API_KEY="AIzaSy..."`
   * **Moonshot / Kimi**: `export KIMI_API_KEY="..."` or `export MOONSHOT_API_KEY="..."`
@@ -172,7 +172,7 @@ python scripts/generate_evidence.py
 ├── evidence/                           # Proof of real execution runs
 │   ├── capability_member_lookup.json   # Discovered canonical capability artifact (cap_bfa2d82803e3)
 │   ├── capability_open_subaccount.json # Sub-account creation artifact with RISKY_IRREVERSIBLE gate
-│   ├── discovery_run.log               # Live Claude 3.5 Sonnet discovery audit log
+│   ├── discovery_run.log               # Live Claude Sonnet 5 discovery audit log
 │   ├── replay_success.log              # Deterministic replay log (Happy path, Member 1001)
 │   ├── replay_business_outcome_404.log # Expected business outcome log (Member 9999)
 │   ├── replay_interstitial_recovery.log# Recoverable condition log (Maintenance banner dismissed)
