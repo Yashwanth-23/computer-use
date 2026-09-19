@@ -8,9 +8,15 @@ from src.schemas.execution import ReplayStatus
 from src.engine.replay_executor import ReplayExecutor
 
 
-def test_discovery_agent_end_to_end():
-    """Verify that DiscoveryAgent runs the observe->decide->act loop and outputs a valid CapabilityArtifact."""
-    agent = DiscoveryAgent(headless=True, log_file="evidence/discovery_run.log")
+def test_discovery_agent_end_to_end(tmp_path):
+    """Verify that DiscoveryAgent runs the observe->decide->act loop and outputs a valid CapabilityArtifact.
+    
+    CRITICAL: Writes strictly to tmp_path to protect canonical evidence from being overwritten.
+    """
+    test_log = str(tmp_path / "test_discovery.log")
+    test_artifact_path = str(tmp_path / "test_capability.json")
+    
+    agent = DiscoveryAgent(headless=True, log_file=test_log)
     
     artifact = agent.discover(
         goal="Look up member 1001 and read savings and checking balances",
@@ -23,21 +29,16 @@ def test_discovery_agent_end_to_end():
     assert artifact.metadata.name == "discovered_member_lookup"
     assert len(artifact.steps) >= 3
     assert len(artifact.output_parameters) >= 2
-    assert os.path.exists("evidence/discovery_run.log")
+    assert os.path.exists(test_log)
     
-    # Save the discovered artifact into evidence/
-    with open("evidence/capability_member_lookup.json", "w", encoding="utf-8") as f:
+    # Save the discovered artifact into tmp_path
+    with open(test_artifact_path, "w", encoding="utf-8") as f:
         f.write(artifact.model_dump_json(indent=2))
         
-    assert os.path.exists("evidence/capability_member_lookup.json")
+    assert os.path.exists(test_artifact_path)
 
-
-def test_replay_discovered_artifact():
-    """Verify that the artifact produced by DiscoveryAgent can be replayed deterministically."""
-    with open("evidence/capability_member_lookup.json", "r", encoding="utf-8") as f:
-        artifact = CapabilityArtifact.model_validate_json(f.read())
-        
-    executor = ReplayExecutor(headless=True)
+    # Replay discovered artifact directly from tmp_path
+    executor = ReplayExecutor(headless=True, evidence_dir=str(tmp_path))
     
     # Replay 1001
     res1 = executor.run(artifact, inputs={"member_id": "1001"})
@@ -49,6 +50,44 @@ def test_replay_discovered_artifact():
     res2 = executor.run(artifact, inputs={"member_id": "9999"})
     assert res2.status == ReplayStatus.BUSINESS_OUTCOME
     assert res2.business_outcome.outcome_code == "MEMBER_NOT_FOUND"
+
+
+def test_discovery_timeout_detection(tmp_path):
+    """Verify that DiscoveryAgent halts when wall-clock deadline is exceeded."""
+    test_log = str(tmp_path / "test_timeout.log")
+    agent = DiscoveryAgent(headless=True, log_file=test_log)
+    
+    with pytest.raises(TimeoutError, match="Discovery exceeded wall-clock deadline"):
+        agent.discover(
+            goal="Look up member 1001",
+            target_url="http://127.0.0.1:8000/portal/member-lookup",
+            max_duration_seconds=0.0001,
+        )
+
+
+def test_discovery_risk_classification():
+    """Verify that semantic risk classification marks state commits as RISKY_IRREVERSIBLE."""
+    from src.agent.artifact_compiler import classify_step_risk
+    from src.schemas.artifact import ActionType, RiskLevel
+
+    # 1. Search button click is SAFE
+    risk1, reason1 = classify_step_risk(
+        action_type=ActionType.CLICK,
+        element={"element_id": "ctl00_MainContent_btnSearch", "text_content": "Search Record"}
+    )
+    assert risk1 == RiskLevel.SAFE
+    assert reason1 is None
+
+    # 2. Confirm sub-account button click is RISKY_IRREVERSIBLE
+    risk2, reason2 = classify_step_risk(
+        action_type=ActionType.CLICK,
+        element={"element_id": "ctl00_MainContent_btnConfirm", "text_content": "Confirm Sub-Account Opening"},
+        target_url="http://127.0.0.1:8000/portal/sub-account/confirm"
+    )
+    assert risk2 == RiskLevel.RISKY_IRREVERSIBLE
+    assert reason2 is not None
+    assert "Irreversible state modification" in reason2
+
 
 
 def test_openai_compatible_client_structure(monkeypatch):

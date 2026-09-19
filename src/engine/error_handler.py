@@ -25,7 +25,17 @@ class ErrorDiagnostics:
         """Captures page screenshot, extracts redacted DOM context, and returns DebugContext."""
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         screenshot_name = f"failure_{run_id[:8]}_{step_id}_{timestamp}.png"
-        screenshot_path = os.path.join(self.evidence_dir, screenshot_name)
+        screenshot_path = os.path.join(self.evidence_dir, screenshot_name).replace("\\", "/")
+
+        try:
+            # Visually mask sensitive financial selectors before screenshot
+            page.evaluate("""() => {
+                document.querySelectorAll('.ssn, .balance, [data-sensitive], input[type="password"]').forEach(el => {
+                    el.style.filter = 'blur(6px)';
+                });
+            }""")
+        except Exception:
+            pass
 
         try:
             page.screenshot(path=screenshot_path)
@@ -36,18 +46,20 @@ class ErrorDiagnostics:
         # Capture observed page context
         try:
             raw_text = page.inner_text("body")
-            # Take first 500 chars to avoid gigantic dumps
+            # Take first 80 words to avoid gigantic dumps
             condensed = " ".join(raw_text.split()[:80])
             observed_text = f"URL: {page.url} | Body preview: {condensed}"
         except Exception:
             observed_text = f"URL: {getattr(page, 'url', 'unknown')}"
 
         redacted_observed = redact_text(observed_text)
+        redacted_exception = redact_text(str(exception))
 
         return DebugContext(
             failed_step_id=step_id,
             expected=expected,
-            observed=f"{redacted_observed} (Error: {str(exception)})",
+            observed=f"{redacted_observed} (Error: {redacted_exception})",
             evidence_ref=ref_path,
             exception_type=type(exception).__name__,
         )
+

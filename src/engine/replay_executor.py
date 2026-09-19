@@ -2,7 +2,7 @@ import os
 import re
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 from uuid import uuid4
 from playwright.sync_api import sync_playwright, Page, Browser, BrowserContext
 
@@ -41,11 +41,11 @@ class ReplayExecutor:
         self,
         headless: bool = True,
         evidence_dir: str = "evidence",
-        allow_unattended_risky: bool = False,
+        interactive_handler: Optional[Callable[[Any, Page], str]] = None,
     ):
         self.headless = headless
         self.evidence_dir = evidence_dir
-        self.allow_unattended_risky = allow_unattended_risky
+        self.interactive_handler = interactive_handler
         self.diagnostics = ErrorDiagnostics(os.path.join(evidence_dir, "screenshots"))
 
     def run(
@@ -64,10 +64,11 @@ class ReplayExecutor:
         # 1. Validate inputs
         self._validate_inputs(artifact, inputs)
 
-        # 2. Configure guardrail
+        # 2. Configure guardrail (fail-closed action and route policies)
         guardrail = PolicyGuardrail(
             allowed_domains=artifact.allowed_domains,
-            allow_unattended_risky=self.allow_unattended_risky,
+            allowed_actions=getattr(artifact, "allowed_actions", None),
+            allowed_routes=getattr(artifact, "allowed_routes", None),
         )
 
         recovery_mgr = RecoveryManager(artifact.exceptional_rules)
@@ -76,6 +77,8 @@ class ReplayExecutor:
             session_id=session_id,
             evidence_dir=os.path.join(self.evidence_dir, "screenshots"),
         )
+        if self.interactive_handler:
+            escalation_mgr.interactive_handler = self.interactive_handler
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=self.headless)
@@ -90,7 +93,10 @@ class ReplayExecutor:
                     trace_detail = None
                     locator_res = None
 
-                    # Check for risky action gating
+                    # 1. Action allowlist validation (enforced before reaching Playwright)
+                    guardrail.validate_action(step.action)
+
+                    # 2. Check for risky action gating (FAIL CLOSED on unattended execution)
                     needs_esc, esc_reason = guardrail.check_step_risk(step)
                     if needs_esc:
                         req = escalation_mgr.trigger_escalation(
@@ -102,12 +108,31 @@ class ReplayExecutor:
                             current_step_id=step.step_id,
                             proposed_action=f"Execute {step.action.value} on {step.step_id}",
                         )
-                        escalation_mgr.handle_operator_takeover(
-                            page=page,
-                            request=req,
-                            auto_resume=(not interactive_escalation),
-                        )
-                        trace_detail = "Human operator approved risky step execution"
+                        if not interactive_escalation and not self.interactive_handler:
+                            # FAIL CLOSED: Unattended execution of RISKY_IRREVERSIBLE action is strictly refused!
+                            step_elapsed = round((time.perf_counter() - step_start) * 1000, 2)
+                            traces.append(StepTrace(
+                                step_id=step.step_id,
+                                outcome=StepOutcome.SKIPPED_ESCALATED,
+                                started_at=datetime.now(timezone.utc),
+                                duration_ms=step_elapsed,
+                                detail=f"Unattended execution blocked by policy: {esc_reason}",
+                            ))
+                            return ExecutionResult(
+                                run_id=run_id,
+                                capability_id=artifact.metadata.id,
+                                capability_version=artifact.metadata.version,
+                                status=ReplayStatus.ESCALATED,
+                                started_at=started_at,
+                                finished_at=datetime.now(timezone.utc),
+                                step_traces=traces,
+                                escalation_ref=req.id,
+                            )
+                        else:
+                            # Interactive operator takeover on the LIVE page
+                            updated_state = escalation_mgr.handle_operator_takeover(page=page, request=req)
+                            actions_desc = "; ".join(a.description for a in updated_state.operator_actions)
+                            trace_detail = actions_desc or "Operator authorized live session resumption"
 
                     # Pre-step check for recoverable interstitials (e.g. maintenance banner)
                     recovered, rule, msg = recovery_mgr.check_and_handle_conditions(page)
@@ -176,7 +201,7 @@ class ReplayExecutor:
 
                     # Execute concrete action
                     if step.action == ActionType.NAVIGATE:
-                        url = step.target_url or ""
+                        url = self._resolve_placeholders(step.target_url, inputs) or ""
                         if url.startswith("/"):
                             base_domain = artifact.allowed_domains[0]
                             if not base_domain.startswith("http"):
@@ -184,14 +209,18 @@ class ReplayExecutor:
                             url = f"{base_domain.rstrip('/')}{url}"
                         guardrail.validate_url(url)
                         page.goto(url)
+                        guardrail.validate_url(page.url)
                     elif step.action == ActionType.CLICK:
                         loc_target.click()
+                        guardrail.validate_url(page.url)
                     elif step.action == ActionType.TYPE:
                         loc_target.fill(resolved_value or "")
                     elif step.action == ActionType.SELECT:
                         loc_target.select_option(value=resolved_value)
+                        guardrail.validate_url(page.url)
                     elif step.action == ActionType.DISMISS:
                         loc_target.click()
+                        guardrail.validate_url(page.url)
                     elif step.action == ActionType.WAIT_FOR:
                         page.wait_for_timeout(step.max_wait_ms)
                     elif step.action == ActionType.EXTRACT:

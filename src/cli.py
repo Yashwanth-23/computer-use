@@ -54,7 +54,6 @@ def cmd_replay(args):
     inputs = json.loads(args.input) if args.input else {}
     executor = ReplayExecutor(
         headless=(not args.headed),
-        allow_unattended_risky=args.allow_risky,
         evidence_dir=args.evidence_dir,
     )
 
@@ -75,6 +74,10 @@ def cmd_replay(args):
     elif result.status == ReplayStatus.BUSINESS_OUTCOME:
         print(f"Outcome:     [{result.business_outcome.outcome_code}]")
         print(f"Message:     {result.business_outcome.message}")
+    elif result.status == ReplayStatus.ESCALATED:
+        print(f"Incident ID: {result.escalation_ref}")
+        print("Policy Gate: Unattended execution halted on RISKY_IRREVERSIBLE action.")
+        print("Rerun with --interactive (and optionally --headed) to provide human operator authorization.")
     elif result.status == ReplayStatus.HARD_FAILURE:
         print(f"Failed Step: {result.debug.failed_step_id}")
         print(f"Expected:    {result.debug.expected}")
@@ -121,7 +124,6 @@ def main():
     p_rep.add_argument("--artifact", type=str, default="evidence/capability_member_lookup.json")
     p_rep.add_argument("--input", type=str, default='{"member_id": "1001"}')
     p_rep.add_argument("--evidence-dir", type=str, default="evidence")
-    p_rep.add_argument("--allow-risky", action="store_true", help="Authorize unattended execution of risky steps")
     p_rep.add_argument("--interactive", action="store_true", help="Prompt operator interactively during escalation")
     p_rep.add_argument("--headed", action="store_true", help="Launch browser in headed mode")
     p_rep.set_defaults(func=cmd_replay)

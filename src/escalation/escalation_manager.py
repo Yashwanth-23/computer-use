@@ -48,7 +48,7 @@ class EscalationManager:
         """Pauses automation, captures live session context, and creates an InterventionRequest."""
         timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         screenshot_filename = f"escalation_{self.run_id[:8]}_{current_step_id or 'step'}_{timestamp_str}.png"
-        screenshot_path = os.path.join(self.evidence_dir, screenshot_filename)
+        screenshot_path = os.path.join(self.evidence_dir, screenshot_filename).replace("\\", "/")
 
         try:
             page.screenshot(path=screenshot_path)
@@ -75,7 +75,6 @@ class EscalationManager:
         self,
         page: Page,
         request: InterventionRequest,
-        auto_resume: bool = False,
         operator_action_desc: Optional[str] = None,
     ) -> HandoffState:
         """Transfers control of the live session to the human operator and manages resumption."""
@@ -85,9 +84,7 @@ class EscalationManager:
         # If a custom interactive handler is provided, invoke it
         if self.interactive_handler:
             resolution = self.interactive_handler(request, page)
-            action_desc = f"Operator resolved via custom handler: {resolution}"
-        elif auto_resume:
-            action_desc = operator_action_desc or "Operator inspected live page and confirmed resume"
+            action_desc = operator_action_desc or f"Operator resolved: {resolution}"
         else:
             # Default CLI interactive prompt
             print("\n" + "=" * 72)

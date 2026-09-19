@@ -8,3 +8,5 @@ venv/
 .idea/
 git_notpushed/
 DEFENSE_GUIDE.md
+.coverage*
+htmlcov/

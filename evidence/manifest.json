@@ -1,0 +1,86 @@
+{
+  "manifest_version": "1.0",
+  "generated_at": "2026-09-18T23:56:54.622121+00:00",
+  "git_commit": "f8961ad705567ddd767bf1594a3dd48b92d23598",
+  "environment": {
+    "os": "windows",
+    "target_server": "ApexCore v4.2.1108 (Mock Core Banking)",
+    "replay_engine": "Deterministic Zero-Token Executor (Playwright)"
+  },
+  "artifacts": [
+    {
+      "path": "evidence/capability_member_lookup.json",
+      "capability_id": "cap_bfa2d82803e3",
+      "name": "discovered_member_lookup",
+      "version": "1.0.0",
+      "sha256": "eca07494e5cd353a4d62675dd8557fb3d013e627a006938ffb036106d2bbf079",
+      "provenance": "Compiled from genuine Claude 3.5 Sonnet discovery run (see evidence/discovery_run.log)"
+    },
+    {
+      "path": "evidence/capability_open_subaccount.json",
+      "capability_id": "cap_open_sub_account",
+      "name": "open_sub_account",
+      "version": "1.0.0",
+      "sha256": "c7a5e9abca19e44aa588dcdb33f1b4a693482567df3a4831f0f49cffd82a4af4",
+      "provenance": "Compiled capability artifact with Step 5 classified as RISKY_IRREVERSIBLE"
+    }
+  ],
+  "evidence_runs": [
+    {
+      "log_file": "evidence/discovery_run.log",
+      "capability_id": "cap_bfa2d82803e3",
+      "mode": "genuine_model_discovery",
+      "model": "claude-3-5-sonnet",
+      "status": "COMPLETED",
+      "sha256": "ea52735b9da241afa346d9afc438190a8d9b1107d0f0e27a070147eb345e34d5",
+      "description": "Autonomous discovery against hostile ASP.NET banking portal using Claude 3.5 Sonnet"
+    },
+    {
+      "log_file": "evidence/replay_success.log",
+      "run_id": "run_1d2e6604e095",
+      "capability_id": "cap_bfa2d82803e3",
+      "mode": "deterministic_replay_zero_token",
+      "status": "success",
+      "sha256": "87fd64bba9e2a01d01e2c796ccc2e97356a00205a3b45aca3bd96138d545dc65",
+      "description": "Replay for member 1001 with zero LLM tokens and multi-strategy DOM resolution"
+    },
+    {
+      "log_file": "evidence/replay_business_outcome_404.log",
+      "run_id": "run_9c260a456074",
+      "capability_id": "cap_bfa2d82803e3",
+      "mode": "deterministic_replay_zero_token",
+      "status": "business_outcome",
+      "sha256": "f2e9279ca8d96d195d6644129822522a9f45e98536e338ce2c28a96ba30f7c3b",
+      "description": "Expected business outcome classification (MEMBER_NOT_FOUND) for member 9999"
+    },
+    {
+      "log_file": "evidence/replay_interstitial_recovery.log",
+      "run_id": "run_419a78d06a1e",
+      "capability_id": "cap_bfa2d82803e3",
+      "mode": "deterministic_replay_zero_token",
+      "status": "recovered",
+      "sha256": "ebd53e59cc48cf5482d2586f75f6c3db315650dea3cc42d9835808450fe52184",
+      "description": "Autonomous detection and recovery from maintenance banner interstitial"
+    },
+    {
+      "log_file": "evidence/replay_escalation_handoff.log",
+      "run_id": "run_3b7bbd6968bb",
+      "capability_id": "cap_open_sub_account",
+      "mode": "simulated_operator_supervised",
+      "status": "success",
+      "sha256": "2a027caaac64d6a41ca2d626afcdf65bd204abd0e0759764eb05f22d9256f178",
+      "screenshot": "escalation_run_3b7b_step_5_confirm_submit_20260918_235647.png",
+      "description": "Policy risk gate triggers on irreversible sub-account creation; human supervisor authorizes live session"
+    },
+    {
+      "log_file": "evidence/replay_hard_failure.log",
+      "run_id": "run_e5bbcc064dcc",
+      "capability_id": "cap_bfa2d82803e3",
+      "mode": "diagnostic_hard_failure",
+      "status": "hard_failure",
+      "sha256": "8c7befba35540627e6c266ba1052a9aad0426b7884166aa07035ccb672e0963d",
+      "screenshot": "failure_run_e5bb_step_click_nonexistent_action_20260918_235654.png",
+      "description": "Intentional unrecoverable DOM fault demonstrating sanitized error diagnostics and masked visual failure captures"
+    }
+  ]
+}

@@ -351,8 +351,20 @@ class CapabilityArtifact(BaseModel):
     )
     allowed_domains: list[str] = Field(
         ..., min_length=1,
-        description="Domains/routes this capability is permitted to touch. Enforced by the safety "
+        description="Domains this capability is permitted to touch. Enforced by the safety "
                     "guardrail at replay time independent of what the steps themselves say.",
+    )
+    allowed_actions: list[ActionType] = Field(
+        default_factory=lambda: [
+            ActionType.NAVIGATE, ActionType.TYPE, ActionType.CLICK,
+            ActionType.EXTRACT, ActionType.WAIT_FOR, ActionType.SELECT, ActionType.DISMISS
+        ],
+        min_length=1,
+        description="Explicit permitted actions for this capability. Missing/disallowed actions fail closed.",
+    )
+    allowed_routes: list[str] | None = Field(
+        default=None,
+        description="Optional route prefixes permitted for navigation. Enforced continuously.",
     )
 
     @field_validator("steps")
@@ -379,6 +391,12 @@ class CapabilityArtifact(BaseModel):
                     if name not in declared:
                         raise ValueError(
                             f"step {step.step_id} references undeclared parameter '{{{name}}}'"
+                        )
+            if step.target_url:
+                for name in placeholder_re.findall(step.target_url):
+                    if name not in declared:
+                        raise ValueError(
+                            f"step {step.step_id} references undeclared parameter '{{{name}}}' in target_url"
                         )
         return self
 

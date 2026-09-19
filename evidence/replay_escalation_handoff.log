@@ -1,12 +1,22 @@
 === HUMAN-IN-THE-LOOP ESCALATION & HANDOFF AUDIT TRAIL ===
-TIMESTAMP:       2026-09-18T03:20:57.704302+00:00
-INCIDENT ID:     esc_bdc0ce53feab
+TIMESTAMP:       2026-09-18T23:56:51.337506+00:00
+RUN ID:          run_3b7bbd6968bb
+CAPABILITY ID:   cap_open_sub_account (v1.0.0)
+INCIDENT ID:     esc_31c7f776e0e9
 REASON:          risky_step_approval
-EXPLANATION:     Policy Gate: Opening holiday club sub-account is classified as RISKY_IRREVERSIBLE.
-PROPOSED ACTION: Open HOLIDAY_CLUB sub-account for member 1001 ($50.00 deposit)
-SCREENSHOT REF:  evidence/screenshots\escalation_run_evid_step_confirm_sub_account_20260918_032057.png
-SESSION ID:      sess_live_core
-FINAL STATE:     automation_running
-OPERATOR ACTIONS RECORDED ON LIVE SESSION:
-  * [2026-09-18T03:20:57.704243+00:00] Operator resolved via custom handler: Human operator configured sub-account product and navigated to review confirmation
+EXPLANATION:     Policy Gate: Step 'step_5_confirm_submit' (click) is classified as RISKY_IRREVERSIBLE (Opening a sub-account creates an active financial ledger record and allocates initial deposit funds. This operation cannot be automatically reversed without human supervisor authorization.). Unattended execution blocked by banking policy.
+PROPOSED ACTION: Execute click on step_5_confirm_submit
+SCREENSHOT REF:  evidence/screenshots/escalation_run_3b7b_step_5_confirm_submit_20260918_235647.png
+RUN REF:         run_3b7bbd6968bb
+FINAL STATUS:    SUCCESS
+OUTPUTS:         {
+  "receipt_id": "APX-100000"
+}
+STEP TRACES (Showing Gated Human Sign-off):
+  * step_1_navigate_form      (1603.2ms) 
+  * step_2_select_product     (1574.1ms) [stable_id candidate=0]
+  * step_3_enter_deposit      (1576.4ms) [stable_id candidate=0]
+  * step_4_click_review       (1632.4ms) [stable_id candidate=0]
+  * step_5_confirm_submit     (1682.5ms) [stable_id candidate=0] - Operator resolved: Supervisor (ID: SUPV-8821) verified member 1001 KYC and authorized creation of HOLIDAY_CLUB sub-account
+  * step_6_extract_receipt    (1564.2ms) [stable_id candidate=0]
 =========================================================

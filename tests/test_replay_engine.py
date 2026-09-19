@@ -54,7 +54,7 @@ def test_deterministic_replay_interstitial_recovery():
     requests.post("http://127.0.0.1:8000/admin/maintenance/off")
 
 
-def test_deterministic_replay_hard_failure_captures_screenshot_and_debug_context():
+def test_deterministic_replay_hard_failure_captures_screenshot_and_debug_context(tmp_path):
     """Unresolvable element triggers HARD_FAILURE, capturing screenshot and DebugContext."""
     import os
     core_data.reset_all()
@@ -63,7 +63,7 @@ def test_deterministic_replay_hard_failure_captures_screenshot_and_debug_context
     artifact.steps[1].locator.chain[0].value = "#ctl00_NonExistentElement_ThatDoesNotExist"
     artifact.steps[1].locator.chain = [artifact.steps[1].locator.chain[0]]
 
-    executor = ReplayExecutor(headless=True, evidence_dir="evidence")
+    executor = ReplayExecutor(headless=True, evidence_dir=str(tmp_path))
     result = executor.run(artifact, inputs={"member_id": "1001"})
 
     assert result.status == ReplayStatus.HARD_FAILURE
@@ -73,3 +73,37 @@ def test_deterministic_replay_hard_failure_captures_screenshot_and_debug_context
     assert os.path.exists(result.debug.evidence_ref), f"Screenshot file must exist on disk: {result.debug.evidence_ref}"
     assert "URL:" in result.debug.observed
     assert result.outputs is None
+
+
+def test_deterministic_replay_blocks_forbidden_action(tmp_path):
+    """Verify that an action not in allowed_actions is blocked before reaching Playwright."""
+    from src.schemas.artifact import ActionType
+    core_data.reset_all()
+    artifact = build_artifact()
+    # Restrict allowed actions strictly to NAVIGATE (prohibits TYPE and CLICK)
+    artifact.allowed_actions = [ActionType.NAVIGATE]
+
+    executor = ReplayExecutor(headless=True, evidence_dir=str(tmp_path))
+    result = executor.run(artifact, inputs={"member_id": "1001"})
+
+    assert result.status == ReplayStatus.HARD_FAILURE
+    assert result.debug is not None
+    assert result.debug.exception_type == "SecurityViolationError"
+    assert "prohibited by policy" in result.debug.observed
+
+
+def test_deterministic_replay_blocks_off_domain_navigation(tmp_path):
+    """Verify that navigation escaping allowed_domains is halted immediately."""
+    core_data.reset_all()
+    artifact = build_artifact()
+    # Step 1 targets an untrusted external origin
+    artifact.steps[0].target_url = "http://malicious-external-site.com/phish"
+
+    executor = ReplayExecutor(headless=True, evidence_dir=str(tmp_path))
+    result = executor.run(artifact, inputs={"member_id": "1001"})
+
+    assert result.status == ReplayStatus.HARD_FAILURE
+    assert result.debug is not None
+    assert result.debug.exception_type == "SecurityViolationError"
+    assert "violates domain allowlist" in result.debug.observed
+

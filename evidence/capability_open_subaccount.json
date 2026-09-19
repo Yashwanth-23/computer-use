@@ -1,0 +1,357 @@
+{
+  "schema_version": "1.0",
+  "metadata": {
+    "id": "cap_open_sub_account",
+    "name": "open_sub_account",
+    "version": "1.0.0",
+    "app_id": "apexcore_banking_portal",
+    "tenant_id": null,
+    "author": "discovery_agent",
+    "created_at": "2026-09-18T23:49:24.246502Z",
+    "review_status": "draft",
+    "description": "Opens a new sub-account (e.g. Holiday Club) for an existing member with an initial deposit. Step 5 commits financial ledger mutations and is strictly classified as RISKY_IRREVERSIBLE."
+  },
+  "input_parameters": [
+    {
+      "name": "member_id",
+      "type": "string",
+      "required": true,
+      "description": "Target member ID in the core banking system.",
+      "enum_values": null,
+      "pattern": "^\\d{1,10}$",
+      "example": "1001"
+    },
+    {
+      "name": "product_type",
+      "type": "string",
+      "required": true,
+      "description": "Product type code (HOLIDAY_CLUB, CHRISTMAS_CLUB, MONEY_MARKET).",
+      "enum_values": null,
+      "pattern": null,
+      "example": "HOLIDAY_CLUB"
+    },
+    {
+      "name": "initial_deposit",
+      "type": "string",
+      "required": true,
+      "description": "Initial deposit amount in USD (minimum $25.00).",
+      "enum_values": null,
+      "pattern": "^\\d+(\\.\\d{1,2})?$",
+      "example": "50.00"
+    }
+  ],
+  "output_parameters": [
+    {
+      "name": "receipt_id",
+      "type": "string",
+      "description": "Unique ledger confirmation receipt identifier.",
+      "extraction_locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_lblReceiptId",
+            "note": "Stable label control ID containing unique sub-account receipt ID."
+          },
+          {
+            "strategy": "structural_path",
+            "value": "//td[contains(text(),'Receipt ID')]/following-sibling::td",
+            "note": "Structural fallback next to Receipt ID label."
+          }
+        ],
+        "reasoning": "Receipt ID output field extraction locator."
+      },
+      "transform": null
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "step_1_navigate_form",
+      "action": "navigate",
+      "locator": null,
+      "input_value": null,
+      "target_url": "http://127.0.0.1:8000/portal/sub-account/new?member_id={member_id}",
+      "is_risky": "safe",
+      "risk_justification": null,
+      "checkpoint": {
+        "description": "Sub-account opening form loaded.",
+        "locator": {
+          "chain": [
+            {
+              "strategy": "stable_id",
+              "value": "#ctl00_MainContent_ddlProductType",
+              "note": "Server-rendered ASP.NET dropdown control ID."
+            },
+            {
+              "strategy": "accessible_role_name",
+              "value": "role=combobox[name=\"Product Type\"]",
+              "note": "Accessible fallback for product dropdown."
+            }
+          ],
+          "reasoning": "Legacy ASP.NET dropdown selector with accessible role fallback."
+        },
+        "expected_url_pattern": "/portal/sub-account/new.*",
+        "timeout_ms": 5000
+      },
+      "max_wait_ms": 8000
+    },
+    {
+      "step_id": "step_2_select_product",
+      "action": "select",
+      "locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_ddlProductType",
+            "note": "Server-rendered ASP.NET dropdown control ID."
+          },
+          {
+            "strategy": "accessible_role_name",
+            "value": "role=combobox[name=\"Product Type\"]",
+            "note": "Accessible fallback for product dropdown."
+          }
+        ],
+        "reasoning": "Legacy ASP.NET dropdown selector with accessible role fallback."
+      },
+      "input_value": "{product_type}",
+      "target_url": null,
+      "is_risky": "safe",
+      "risk_justification": null,
+      "checkpoint": null,
+      "max_wait_ms": 8000
+    },
+    {
+      "step_id": "step_3_enter_deposit",
+      "action": "type",
+      "locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_txtInitialDeposit",
+            "note": "Server-rendered ASP.NET text input control ID."
+          },
+          {
+            "strategy": "accessible_role_name",
+            "value": "role=textbox[name=\"Initial Deposit ($)\"]",
+            "note": "Accessible fallback for deposit amount."
+          }
+        ],
+        "reasoning": "Legacy ASP.NET input control for monetary deposit."
+      },
+      "input_value": "{initial_deposit}",
+      "target_url": null,
+      "is_risky": "safe",
+      "risk_justification": null,
+      "checkpoint": null,
+      "max_wait_ms": 8000
+    },
+    {
+      "step_id": "step_4_click_review",
+      "action": "click",
+      "locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_btnReview",
+            "note": "Server-rendered review submit button ID."
+          },
+          {
+            "strategy": "text_match",
+            "value": "Review Request",
+            "note": "Visible button text fallback."
+          }
+        ],
+        "reasoning": "Review button transitions to the review confirmation stage."
+      },
+      "input_value": null,
+      "target_url": null,
+      "is_risky": "safe",
+      "risk_justification": null,
+      "checkpoint": {
+        "description": "Review confirmation screen loaded.",
+        "locator": {
+          "chain": [
+            {
+              "strategy": "stable_id",
+              "value": "#ctl00_MainContent_btnConfirmSubmit",
+              "note": "Server-rendered confirmation submit button ID."
+            },
+            {
+              "strategy": "text_match",
+              "value": "Confirm and Submit",
+              "note": "Visible button text fallback."
+            }
+          ],
+          "reasoning": "Irreversible financial mutation button committing new sub-account to core ledger."
+        },
+        "expected_url_pattern": "/portal/sub-account/review.*",
+        "timeout_ms": 5000
+      },
+      "max_wait_ms": 8000
+    },
+    {
+      "step_id": "step_5_confirm_submit",
+      "action": "click",
+      "locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_btnConfirmSubmit",
+            "note": "Server-rendered confirmation submit button ID."
+          },
+          {
+            "strategy": "text_match",
+            "value": "Confirm and Submit",
+            "note": "Visible button text fallback."
+          }
+        ],
+        "reasoning": "Irreversible financial mutation button committing new sub-account to core ledger."
+      },
+      "input_value": null,
+      "target_url": null,
+      "is_risky": "risky_irreversible",
+      "risk_justification": "Opening a sub-account creates an active financial ledger record and allocates initial deposit funds. This operation cannot be automatically reversed without human supervisor authorization.",
+      "checkpoint": {
+        "description": "Sub-account receipt rendered upon ledger commitment.",
+        "locator": {
+          "chain": [
+            {
+              "strategy": "stable_id",
+              "value": "#ctl00_MainContent_pnlReceipt",
+              "note": "Receipt container panel rendered upon successful account creation."
+            }
+          ],
+          "reasoning": "Success receipt container indicating state commitment."
+        },
+        "expected_url_pattern": "/portal/sub-account/confirm.*",
+        "timeout_ms": 5000
+      },
+      "max_wait_ms": 8000
+    },
+    {
+      "step_id": "step_6_extract_receipt",
+      "action": "extract",
+      "locator": {
+        "chain": [
+          {
+            "strategy": "stable_id",
+            "value": "#ctl00_MainContent_lblReceiptId",
+            "note": "Stable label control ID containing unique sub-account receipt ID."
+          },
+          {
+            "strategy": "structural_path",
+            "value": "//td[contains(text(),'Receipt ID')]/following-sibling::td",
+            "note": "Structural fallback next to Receipt ID label."
+          }
+        ],
+        "reasoning": "Receipt ID output field extraction locator."
+      },
+      "input_value": null,
+      "target_url": null,
+      "is_risky": "safe",
+      "risk_justification": null,
+      "checkpoint": null,
+      "max_wait_ms": 8000
+    }
+  ],
+  "success_checkpoint": {
+    "description": "Sub-account confirmed and receipt panel visible.",
+    "locator": {
+      "chain": [
+        {
+          "strategy": "stable_id",
+          "value": "#ctl00_MainContent_pnlReceipt",
+          "note": "Receipt container panel rendered upon successful account creation."
+        }
+      ],
+      "reasoning": "Success receipt container indicating state commitment."
+    },
+    "expected_url_pattern": "/portal/sub-account/confirm.*",
+    "timeout_ms": 5000
+  },
+  "exceptional_rules": [
+    {
+      "rule_id": "rule_member_not_found",
+      "outcome_class": "business_outcome",
+      "signature": {
+        "locator": {
+          "chain": [
+            {
+              "strategy": "stable_id",
+              "value": "#ctl00_MainContent_lblResultMessage",
+              "note": null
+            },
+            {
+              "strategy": "text_match",
+              "value": "Member Record Not Found",
+              "note": null
+            }
+          ],
+          "reasoning": "Business outcome locator for missing member ID."
+        },
+        "text_pattern": "Member Record Not Found"
+      },
+      "outcome_code": "MEMBER_NOT_FOUND",
+      "description": "The specified member ID does not exist in the banking core.",
+      "recovery_action": null
+    },
+    {
+      "rule_id": "rule_account_frozen",
+      "outcome_class": "business_outcome",
+      "signature": {
+        "locator": {
+          "chain": [
+            {
+              "strategy": "stable_id",
+              "value": "#ctl00_MainContent_lblRestrictedMessage",
+              "note": null
+            },
+            {
+              "strategy": "text_match",
+              "value": "FROZEN",
+              "note": null
+            }
+          ],
+          "reasoning": "Business outcome locator for restricted/frozen accounts."
+        },
+        "text_pattern": "FROZEN"
+      },
+      "outcome_code": "ACCOUNT_FROZEN",
+      "description": "The member's account is FROZEN; sub-accounts cannot be opened.",
+      "recovery_action": null
+    },
+    {
+      "rule_id": "rule_validation_error",
+      "outcome_class": "business_outcome",
+      "signature": {
+        "locator": {
+          "chain": [
+            {
+              "strategy": "stable_id",
+              "value": "#ctl00_MainContent_lblValidationError",
+              "note": null
+            }
+          ],
+          "reasoning": "Business outcome locator for input validation failures (e.g. deposit under $25)."
+        },
+        "text_pattern": null
+      },
+      "outcome_code": "VALIDATION_ERROR",
+      "description": "Input validation failed (e.g. deposit below minimum requirement).",
+      "recovery_action": null
+    }
+  ],
+  "allowed_domains": [
+    "127.0.0.1:8000",
+    "localhost:8000"
+  ],
+  "allowed_actions": [
+    "navigate",
+    "select",
+    "type",
+    "click",
+    "extract"
+  ],
+  "allowed_routes": [
+    "/portal/sub-account"
+  ]
+}

@@ -50,6 +50,51 @@ def extract_semantic_field_label(element_id: str, desc: str = "") -> str:
     return ""
 
 
+def classify_step_risk(
+    action_type: ActionType,
+    element: Dict[str, Any] | None,
+    target_url: str | None = None,
+    checkpoint_desc: str | None = None,
+) -> tuple[RiskLevel, str | None]:
+    """Semantically classifies whether a discovered step is SAFE or RISKY_IRREVERSIBLE.
+    
+    Banking Core Invariant:
+    - Pure read operations, search field inputs, and navigation are SAFE.
+    - Financial mutations, sub-account openings, transfers, or confirm/submit actions
+      are RISKY_IRREVERSIBLE and require explicit operator authorization.
+    """
+    context_tokens = []
+    if element:
+        context_tokens.extend([
+            str(element.get("element_id") or ""),
+            str(element.get("accessible_name") or ""),
+            str(element.get("text_content") or ""),
+            str(element.get("selector") or ""),
+        ])
+    if target_url:
+        context_tokens.append(target_url)
+    if checkpoint_desc:
+        context_tokens.append(checkpoint_desc)
+
+    combined = " ".join(context_tokens).lower()
+
+    risky_keywords = [
+        "confirm", "submit", "open-subaccount", "opensubaccount", "open sub-account",
+        "btnconfirm", "btnsubmit", "btnopen", "review_confirm",
+        "transfer", "withdraw", "deposit", "delete", "post-transaction", "commit", "authorize"
+    ]
+
+    if action_type in {ActionType.CLICK, ActionType.DISMISS}:
+        for kw in risky_keywords:
+            if kw in combined:
+                return (
+                    RiskLevel.RISKY_IRREVERSIBLE,
+                    f"Irreversible state modification: Action commits mutation ('{kw}' detected in control context)."
+                )
+
+    return RiskLevel.SAFE, None
+
+
 def compile_capability_from_trace(
     capability_name: str,
     description: str,
@@ -152,13 +197,21 @@ def compile_capability_from_trace(
                 expected_url_pattern=r"/portal/.*",
             )
 
+        is_risky, risk_justification = classify_step_risk(
+            action_type=action_type,
+            element=s.get("element"),
+            target_url=s.get("target_url"),
+            checkpoint_desc=s.get("checkpoint_desc"),
+        )
+
         step_obj = CapabilityStep(
             step_id=step_id,
             action=action_type,
             locator=locator,
             input_value=s.get("input_value"),
             target_url=s.get("target_url"),
-            is_risky=RiskLevel.SAFE,
+            is_risky=is_risky,
+            risk_justification=risk_justification,
             checkpoint=checkpoint,
         )
         compiled_steps.append(step_obj)
@@ -241,6 +294,9 @@ def compile_capability_from_trace(
         )
     ]
 
+    used_actions = {step.action for step in compiled_steps} | {ActionType.NAVIGATE, ActionType.EXTRACT}
+    ordered_actions = [a for a in ActionType if a in used_actions]
+
     return CapabilityArtifact(
         schema_version="1.0",
         metadata=CapabilityMetadata(
@@ -255,4 +311,5 @@ def compile_capability_from_trace(
         success_checkpoint=success_chk,
         exceptional_rules=exceptional_rules,
         allowed_domains=list(dict.fromkeys(allowed_domains)),
+        allowed_actions=ordered_actions,
     )

@@ -1,16 +1,16 @@
 === REPLAY LOG: SUCCESS (0 TOKENS, DETERMINISTIC) ===
-TIMESTAMP:   2026-09-18T03:20:47.823002+00:00
-RUN ID:      run_26b57fc0ce5b
+TIMESTAMP:   2026-09-18T23:56:31.210333+00:00
+RUN ID:      run_1d2e6604e095
 STATUS:      SUCCESS
-CAPABILITY:  cap_b9eff2db6046 (v1.0.0)
+CAPABILITY:  cap_bfa2d82803e3 (v1.0.0)
 OUTPUTS:     {
   "savings_balance": 24500.0,
   "checking_balance": 4120.0
 }
 STEP TRACES:
-  * step_1_navigate           (993.6ms) 
-  * step_2_type               (993.0ms) [stable_id candidate=0]
-  * step_3_click              (1016.2ms) [stable_id candidate=0]
-  * step_4_extract            (954.7ms) [stable_id candidate=0]
-  * step_5_extract            (954.1ms) [stable_id candidate=0]
+  * step_1_navigate           (990.9ms) 
+  * step_2_type               (969.3ms) [stable_id candidate=0]
+  * step_3_click              (999.0ms) [stable_id candidate=0]
+  * step_4_extract            (959.0ms) [stable_id candidate=0]
+  * step_5_extract            (935.3ms) [stable_id candidate=0]
 =====================================================

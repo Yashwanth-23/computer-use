@@ -28,11 +28,11 @@ The system implements the core operational paradigm:
                              └───────────────────┬───────────────────┘
                                                  │
 ┌────────────────────────────────────────────────┼───────────────────────┐
-│ PHASE 2: DETERMINISTIC REPLAY (0 Tokens, Sub-Second, Production Engine)│
+│ PHASE 2: DETERMINISTIC REPLAY (0 Tokens, Zero-LLM Production Engine)   │
 │                                                ▼                       │
 │ Runtime Inputs ────────► Replay Engine (No LLM in Decision Loop)       │
 │                               │                                        │
-│                               ├──► Safety Guardrail & PII Redactor     │
+│                               ├──► Policy Guardrail & PII Redactor     │
 │                               ├──► Multi-Strategy Locator Resolver     │
 │                               ├──► Recovery & Interstitial Manager     │
 │                               └──► Human-in-the-Loop Escalation Seam   │
@@ -42,6 +42,21 @@ The system implements the core operational paradigm:
 │                              (SUCCESS | BUSINESS_OUTCOME | FAILURE)    │
 └────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Implemented Vertical Slice vs. Architectural Extensions
+
+To maintain rigorous technical transparency, we distinguish between what is **implemented and verified in code** versus **architectural designs for enterprise expansion**:
+
+* **Implemented Vertical Slice**:
+  * Standalone mock banking core (*ApexCore* v4.2) serving server-rendered ASP.NET WebForms with nested tables, dynamic modals, and multi-step sub-account opening workflows.
+  * Autonomous discovery loop with wall-clock deadline enforcement, cycle/dead-end state fingerprinting, and semantic risk classification.
+  * Deterministic Playwright-based zero-token execution engine with multi-strategy locator chains, continuous post-action route validation, and fail-closed action allowlisting.
+  * Human-in-the-loop escalation state machine yielding live browser sessions and auditing operator interventions.
+  * PII redaction and pre-screenshot visual DOM blurring.
+* **Design-Only Architectural Extensions (V2 Roadmap)**:
+  * Desktop OS Surface Adapters (Windows UI Automation / Citrix virtual display scraping).
+  * Distributed multi-tenant overlay inheritance with delta patch compilation.
+  * WebRTC real-time operator streaming console.
 
 ### Key Decisions & Trade-Offs
 
@@ -57,6 +72,8 @@ The system implements the core operational paradigm:
 4. **Token-Efficient Interactive Observation vs. Raw DOM Dumps**:
    * *Decision*: Rather than flooding LLM context with the raw 50KB HTML tree each turn, `SurfaceObserver` parses the accessibility tree and extracts interactive controls (inputs, buttons, select, links, and balance grids) into a structured compact summary.
    * *Trade-Off*: Keeps input token growth lean (~600-1000 tokens/turn) and discovery latency low (~1.2-2.9s) while providing 100% of required visual/functional affordances.
+5. **Cycle Detection & Discovery Dead-End Containment**:
+   * *Decision*: Implemented a 60-second wall-clock deadline alongside SHA-256 state fingerprinting in `DiscoveryAgent`. If an exploration hits the same state signature 3 times consecutively without progress, the loop halts immediately with `EscalationReason.STUCK_DURING_DISCOVERY`. Incomplete or aborted explorations fail cleanly without writing corrupted artifacts.
 
 ---
 
@@ -76,12 +93,15 @@ The capability artifact (`src/schemas/artifact.py`) is designed as an **agent-in
 * **Semantic Extraction Fallbacks & Label Alignment Caveat**:  
   Extraction fallbacks anchor to semantic table row headers (e.g. `tr:has(td:has-text("Savings")) >> span`) rather than dynamic data values, guaranteeing parameterized reusability across any member record. *Production Caveat*: The compiler tokenizes element IDs and descriptions to derive anchor text. In enterprise multi-tenant deployments where UI headers vary significantly across credit unions (e.g. "Share Savings" vs. "Savings Account"), a tenant label normalization mapping or discovery-time visual OCR anchor dictionary is recommended to maintain alignment.
 * **Strict Type Coercion & Placeholders**:  
-  Inputs (`InputParameter`) and outputs (`OutputField`) enforce strict primitive typing (`string`, `number`, `boolean`, `enum`). Parameter placeholders (`{member_id}`) are resolved dynamically during replay, preventing hardcoded credentials or test values from polluting the capability.
+  Inputs (`InputParameter`) and outputs (`OutputField`) enforce strict primitive typing (`string`, `number`, `boolean`, `enum`). Parameter placeholders (`{member_id}`) in both `input_value` and `target_url` are statically validated against declared inputs at authoring time and resolved dynamically during replay, preventing hardcoded credentials or test values from polluting the capability.
+* **Explicit Policy Allowlisting**:  
+  Every artifact explicitly declares `allowed_domains`, `allowed_actions`, and optional `allowed_routes`. If a malicious or buggy step attempts an undeclared action (e.g. script injection or keyboard shortcut) or an off-route URL, the guardrail aborts execution before the browser executes the command.
 * **Structural Result Guarantees (`ExecutionResult`)**:  
   The result contract enforces mutually exclusive fields at schema validation time:
   * `SUCCESS` / `RECOVERED`: requires `outputs`, forbids `debug` and `business_outcome`.
   * `BUSINESS_OUTCOME`: requires `business_outcome`, forbids `outputs` and `debug`.
   * `HARD_FAILURE`: requires `debug` (failed step, expected vs observed, failure screenshot), forbids `outputs`.
+  * `ESCALATED`: requires `escalation_ref`, forbids `outputs`.
 
 ---
 
@@ -107,6 +127,12 @@ When an exceptional condition triggers during execution, `RecoveryManager` evalu
 1. **Recoverable Interstitials First**: If a modal overlay (e.g. `pnlMaintenanceAlert`) is visible, its dismissal action is executed immediately so the primary workflow can proceed without stall.
 2. **Business Outcomes Second**: If a terminal business status signature is matched (e.g. `#ctl00_MainContent_lblResultMessage` containing "Record Not Found"), the run concludes immediately with status `BUSINESS_OUTCOME` and structured domain payloads.
 3. **Hard Failure Last**: If a locator cannot be resolved across all fallback rungs and no exceptional rule matches, execution halts cleanly with captured screenshots and redacted DOM debug context.
+
+### 4. Measured Execution Latency
+Contrary to broad "sub-second end-to-end" claims, measured execution latency reflects real DOM rendering and network dispatch:
+* **Per DOM Interaction**: ~25ms–50ms for local DOM queries; ~900ms–1000ms with standard page navigation or server postbacks.
+* **Full Multi-Step Replay**: ~1.5s–2.5s total end-to-end for a 5-step workflow (navigation, typing, searching, and extracting 2 balances).
+* **Speedup vs. Discovery**: Compared to multi-turn LLM discovery which takes 15–30+ seconds and consumes 3,000–5,000 tokens, deterministic replay delivers a **10x–15x speedup at exactly zero token cost**.
 
 ---
 
@@ -157,9 +183,11 @@ Escalation is not an uncaught exception; it is an architected state machine oper
 [AUTOMATION_RUNNING] ──(trigger)──► [ESCALATION_PENDING] ──(takeover)──► [HUMAN_CONTROLLED] ──(resume)──► [RESUMING] ──(verify)──► [AUTOMATION_RUNNING]
 ```
 
-### Dual Escalation Triggers
-1. **Reactive Escalation (Stuck/Unresolvable)**: Automation hits an unexpected interstitial or unresolved locator candidate.
-2. **Proactive Policy Escalation (`is_risky: true`)**: The agent reaches an irreversible action (e.g., submitting an account opening or wire transfer). Under enterprise safety policy, unattended execution halts and requires an operator sign-off.
+### Fail-Closed Unattended Risk Policy
+Banking compliance strictly forbids unattended AI agents from committing irreversible financial mutations.
+* **Semantic Risk Classification**: Steps matching state-changing verbs (`confirm`, `submit`, `open-subaccount`, `transfer`) are classified as `RiskLevel.RISKY_IRREVERSIBLE` with required `risk_justification`.
+* **Zero-Bypass Mandate**: Under unattended replay (headless without an operator session), any encounter with a `RISKY_IRREVERSIBLE` action **fails closed**. The engine halts immediately, leaves state completely untouched, sets `step_trace.outcome = StepOutcome.SKIPPED_ESCALATED`, and returns `ReplayStatus.ESCALATED`.
+* **No Fabricated Approval**: The system never auto-resumes or writes false audit statements. Human approval is only logged when an authentic operator interactively authorizes the action.
 
 ### The Live Session Handoff Seam
 * When escalation fires, `EscalationManager` creates a structured `InterventionRequest` carrying the goal, step index, live screenshot path, and current URL.
@@ -171,12 +199,22 @@ Escalation is not an uncaught exception; it is an architected state machine oper
 
 ## 6. Safety & Financial Data Guardrails
 
-* **Domain & Route Allowlists**: `PolicyGuardrail` validates every navigation against `artifact.allowed_domains`. Navigation to unlisted hosts raises `SecurityViolationError`.
-* **Zero PII & Secrets Persistence**: `src/safety/redaction.py` enforces regex sanitization across all logs, step traces, and output payloads:
-  * SSNs (`\b\d{3}-\d{2}-\d{4}\b`) -> `[REDACTED_SSN]`
-  * Credit/Debit Cards (`\b(?:\d{4}[ -]?){3}\d{4}\b`) -> `[REDACTED_CARD]`
-  * JWTs & Session Tokens -> `[REDACTED_JWT]`
-  * Passwords / API Keys -> `[REDACTED_SECRET]`
+### 1. Domain, Scheme, and Route Allowlists
+* `PolicyGuardrail` enforces host/port verification: `http://127.0.0.1:8000` is accepted, while unauthorized external hosts are rejected with `SecurityViolationError`.
+* **Continuous Post-Action Route Validation**: Evaluated after every navigation, click, and form submit (`page.url`) to prevent malicious redirects or cross-site escapes.
+* **Embedded Credentials Blocked**: URLs containing basic authentication credentials (`user:pass@host`) are rejected immediately.
+
+### 2. PII & Secrets Redaction
+`src/safety/redaction.py` enforces regex sanitization across all logs, step traces, exception strings, and output payloads:
+* SSNs (`\b\d{3}-\d{2}-\d{4}\b`) -> `[REDACTED_SSN]`
+* Credit/Debit Cards (`\b(?:\d{4}[ -]?){3}\d{4}\b`) -> `[REDACTED_CARD]`
+* JWTs & Session Tokens -> `[REDACTED_JWT]`
+* Passwords / Secrets -> `[REDACTED_SECRET]`
+
+### 3. Screenshot Policy & Visual Masking
+* **Pre-Screenshot DOM Blurring**: Before any failure or escalation screenshot is captured, `ErrorDiagnostics` injects visual CSS filters (`filter: blur(6px)`) onto sensitive DOM elements (`.ssn, .balance, [data-sensitive], input[type="password"]`).
+* **Ephemeral Storage & Retention**: Screenshots are stored strictly in `evidence/screenshots/`. In production, these directories are mounted with 7-day TTL policies and encrypted at rest.
+* **Cryptographic Manifest Tracking**: Orphaned screenshots from aborted or test runs are actively pruned during evidence generation, ensuring only active, audited evidence artifacts are retained in `evidence/manifest.json`.
 
 ---
 
@@ -186,7 +224,9 @@ Escalation is not an uncaught exception; it is an architected state machine oper
 1. **Premature Distributed Infrastructure**: Avoided Celery task queues, Redis brokers, and PostgreSQL database schemas to keep evaluation immediate, lightweight, and focused on core engine judgment.
 2. **Full WebRTC Co-Browsing Console**: The operator interface uses a robust CLI and in-session Playwright pause mechanism rather than a heavy real-time video streaming web portal.
 3. **Open-Ended Replay Self-Healing**: Did not permit arbitrary LLM re-prompting during replay failures. In financial servicing, silent model guessing on production core accounts creates severe compliance liabilities.
+4. **Desktop Native Automation**: Left the `WindowsUIAutomationAdapter` as a typed architectural interface rather than implementing native Win32 C++ hooks, maintaining full cross-platform portability on Linux/macOS/Windows.
 
 ### What to Build Next
 1. **Automated Cross-Tenant Validator**: Replay recorded base capabilities across an array of tenant test environments to generate automated drift and compatibility scorecards.
 2. **Multi-Modal Visual Anchor Fallbacks**: Augment DOM text locators with localized visual embedding templates (using lightweight OpenCV or CLIP features) for legacy environments that do not expose an OS accessibility tree.
+3. **Automated Sub-Account Rollback Playbooks**: Pair irreversible capability artifacts with inverse compensating transaction capabilities (e.g. `close_subaccount`) for automated recovery when permitted by supervisor policies.

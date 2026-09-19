@@ -21,8 +21,7 @@ def test_domain_allowlist_enforcement():
 
 
 def test_risky_action_gating():
-    guard_strict = PolicyGuardrail(allowed_domains=["127.0.0.1"], allow_unattended_risky=False)
-    guard_permissive = PolicyGuardrail(allowed_domains=["127.0.0.1"], allow_unattended_risky=True)
+    guard = PolicyGuardrail(allowed_domains=["127.0.0.1"])
     
     dummy_locator = MultiStrategyLocator(
         chain=[LocatorCandidate(strategy=LocatorStrategy.STABLE_ID, value="#btnConfirm")],
@@ -45,18 +44,55 @@ def test_risky_action_gating():
     )
     
     # Safe step needs no escalation
-    needed, _ = guard_strict.check_step_risk(safe_step)
+    needed, _ = guard.check_step_risk(safe_step)
     assert not needed
     
-    # Risky step under strict policy needs escalation
-    needed, reason = guard_strict.check_step_risk(risky_step)
+    # Risky step strictly requires human escalation
+    needed, reason = guard.check_step_risk(risky_step)
     assert needed
     assert "Policy Gate" in reason
     assert "Commits money transfer" in reason
-    
-    # Risky step under permissive policy bypasses escalation
-    needed, _ = guard_permissive.check_step_risk(risky_step)
-    assert not needed
+
+
+def test_action_allowlist_enforcement():
+    guard = PolicyGuardrail(
+        allowed_domains=["127.0.0.1:8000"],
+        allowed_actions=[ActionType.NAVIGATE, ActionType.CLICK, ActionType.EXTRACT]
+    )
+
+    # Permitted action passes
+    guard.validate_action(ActionType.CLICK)
+    guard.validate_action(ActionType.NAVIGATE)
+
+    # Prohibited action fails closed
+    with pytest.raises(SecurityViolationError, match="prohibited by policy"):
+        guard.validate_action(ActionType.SELECT)
+
+    with pytest.raises(SecurityViolationError, match="prohibited by policy"):
+        guard.validate_action(ActionType.TYPE)
+
+
+def test_route_allowlist_enforcement():
+    guard = PolicyGuardrail(
+        allowed_domains=["127.0.0.1:8000"],
+        allowed_routes=["/portal/member-lookup", "/portal/member-detail"]
+    )
+
+    # Permitted route passes
+    guard.validate_url("http://127.0.0.1:8000/portal/member-lookup")
+    guard.validate_url("http://127.0.0.1:8000/portal/member-detail?id=1001")
+
+    # Prohibited route on same domain is blocked
+    with pytest.raises(SecurityViolationError, match="violates route allowlist"):
+        guard.validate_url("http://127.0.0.1:8000/admin/secrets")
+
+
+def test_embedded_credentials_blocked():
+    guard = PolicyGuardrail(allowed_domains=["127.0.0.1:8000"])
+
+    with pytest.raises(SecurityViolationError, match="embedded credentials are strictly prohibited"):
+        guard.validate_url("http://admin:secret123@127.0.0.1:8000/portal/member-lookup")
+
 
 
 def test_pii_redaction():

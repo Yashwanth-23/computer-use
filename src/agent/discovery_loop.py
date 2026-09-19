@@ -2,6 +2,7 @@ import os
 import re
 import time
 import logging
+import hashlib
 from datetime import datetime, timezone
 from typing import Optional
 from playwright.sync_api import sync_playwright
@@ -43,6 +44,7 @@ Respond strictly with a valid JSON object.
         capability_name: str = "lookup_member_balance",
         max_steps: int = 8,
         provider: Optional[str] = None,
+        max_duration_seconds: float = 60.0,
     ) -> CapabilityArtifact:
         """Runs the observe -> decide -> act loop until goal is achieved, then compiles artifact."""
         llm = get_llm_client(provider)
@@ -50,6 +52,9 @@ Respond strictly with a valid JSON object.
         action_history = []
         inputs_meta = []
         outputs_meta = []
+        state_history = []
+        finished_cleanly = False
+        loop_start_time = time.perf_counter()
 
         model_name = getattr(llm, "model", type(llm).__name__)
         log_entries = [
@@ -77,9 +82,19 @@ Respond strictly with a valid JSON object.
                 log_entries.append(f"[Step 0] NAVIGATE to {target_url}")
 
                 for step_num in range(1, max_steps + 1):
+                    # Check wall-clock timeout
+                    if (time.perf_counter() - loop_start_time) > max_duration_seconds:
+                        raise TimeoutError(f"Discovery exceeded wall-clock deadline of {max_duration_seconds}s")
+
                     # 1. OBSERVE
                     elements = self.observer.observe(page)
                     prompt_view = self.observer.format_for_prompt(page, elements)
+
+                    # State fingerprint & cycle / dead-end detection
+                    state_fp = hashlib.sha256(f"{page.url}:{prompt_view}".encode("utf-8")).hexdigest()[:16]
+                    state_history.append(state_fp)
+                    if state_history.count(state_fp) >= 3:
+                        raise RuntimeError(f"Discovery stuck in dead-end repeated state at {page.url} (detected 3 duplicate cycles)")
 
                     user_prompt = (
                         f"GOAL: {goal}\n\n"
@@ -128,6 +143,7 @@ Respond strictly with a valid JSON object.
                                     "checkpoint_desc": f"Extract output {out_name}"
                                 })
                         log_entries.append("Goal reported complete. Finishing discovery.")
+                        finished_cleanly = True
                         break
 
                     elif action == "CLICK":
@@ -175,6 +191,9 @@ Respond strictly with a valid JSON object.
                         })
 
                     page.wait_for_timeout(400)
+
+                if not finished_cleanly:
+                    raise RuntimeError(f"Discovery stopped: reached max_steps ({max_steps}) without achieving goal.")
 
             finally:
                 browser.close()

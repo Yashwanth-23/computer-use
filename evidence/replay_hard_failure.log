@@ -1,0 +1,13 @@
+=== REPLAY LOG: HARD FAILURE DIAGNOSTICS (SANITIZED & MASKED) ===
+TIMESTAMP:       2026-09-18T23:56:54.569464+00:00
+RUN ID:          run_e5bbcc064dcc
+STATUS:          HARD_FAILURE
+CAPABILITY:      cap_bfa2d82803e3 (v1.0.0)
+FAILED STEP:     step_click_nonexistent_action
+ERROR TYPE:      LocatorResolutionError
+EXPECTED:        Successful deterministic execution of step
+OBSERVED:        URL: http://127.0.0.1:8000/portal/member-lookup | Body preview: ApexCore ™ - Member Lookup / Balance Inquiry Member ID: Enter a numeric Member ID (test IDs: 1001, 1002, 1003, 9999). ApexCore Servicing Platform - Internal Use Only - Build 4.2.1108 (Error: Failed to resolve locator chain across 1 candidates. Reasoning: Intentionally unreachable selector to demonstrate unrecoverable fault containment.)
+SCREENSHOT REF:  evidence/screenshots/failure_run_e5bb_step_click_nonexistent_action_20260918_235654.png (MASKED)
+STEP TRACES:
+  * step_1_navigate                  ( 28.8ms) [ok] 
+================================================================
