@@ -10,7 +10,7 @@
 
 1. **Discovery (Model in the Loop)**: An LLM explores a live application surface using an **Observe -> Decide -> Act** loop, overcoming hostile legacy quirks (nested `<table>` tags, ASP.NET-style control IDs, absence of `data-testid`).
 2. **Capability Artifact**: The successful execution is compiled into a typed, versioned, agent-invocable capability schema decoupled from the raw model transcript.
-3. **Deterministic Replay (Zero Model in the Loop)**: In production, the capability replays at **0 token cost** and sub-second per DOM interaction (typically 1.5–2.5 seconds total end-to-end replay, compared to 15–30+ seconds for multi-turn LLM exploration), resolving elements via multi-strategy locator chains and distinguishing **Expected Business Outcomes** from **Recoverable Interstitials** and **Hard Failures**.
+3. **Deterministic Replay (Zero Model in the Loop)**: In production, the capability replays at **0 token cost** and sub-second per DOM interaction (measured ~4.7–4.9 seconds across 5 steps, ~5–6 seconds total wall-clock time including Playwright Chromium browser startup, compared to 15–30+ seconds for multi-turn LLM exploration), resolving elements via multi-strategy locator chains and distinguishing **Expected Business Outcomes** from **Recoverable Interstitials** and **Hard Failures**.
 4. **Human-in-the-Loop Escalation**: When unresolvable blockers or irreversible mutations occur, the system pauses on the **exact same live browser session**, transfers control to a human operator, records their actions, and safely resumes automation. Unattended execution strictly fails closed.
 
 ---
@@ -151,7 +151,7 @@ python -m src.cli replay --artifact evidence/capability_open_subaccount.json --i
 
 ## Automated Test Suite
 
-Run the full automated test suite (48 tests covering schemas, guardrails, locator fallbacks, error taxonomy, dead-end detection, and escalation state machine):
+Run the full automated test suite (52 tests covering schemas, guardrails, locator fallbacks, error taxonomy, dead-end detection, and escalation state machine):
 ```bash
 pytest tests/ -v
 ```
@@ -176,7 +176,7 @@ python scripts/generate_evidence.py
 │   ├── replay_success.log              # Deterministic replay log (Happy path, Member 1001)
 │   ├── replay_business_outcome_404.log # Expected business outcome log (Member 9999)
 │   ├── replay_interstitial_recovery.log# Recoverable condition log (Maintenance banner dismissed)
-│   ├── replay_escalation_handoff.log   # Human handoff audit log on live session
+│   ├── replay_escalation_handoff.log   # Simulated supervisor handoff log (mode: simulated_operator_supervised)
 │   ├── replay_hard_failure.log         # Sanitized diagnostic failure log with masked screenshot
 │   ├── manifest.json                   # Cryptographic manifest (hashes, run IDs, commit SHA)
 │   └── screenshots/                    # Active masked failure and escalation screenshots
@@ -187,9 +187,9 @@ python scripts/generate_evidence.py
 ├── src/                                # Core Engine Source
 │   ├── agent/                          # LLM discovery loop & artifact compiler
 │   ├── engine/                         # Zero-LLM deterministic replay engine & error diagnostics
-│   ├── escalation/                     # Live session human escalation & handoff
+│   ├── escalation/                     # Live session human escalation & handoff (with DOM visual masking)
 │   ├── safety/                         # Domain/route guardrails & PII/Secrets sanitizer
 │   ├── schemas/                        # Pydantic v2 artifact & execution contracts
 │   └── cli.py                          # Unified CLI entry point
-└── tests/                              # Rigorous unit and integration test suite (48 tests)
+└── tests/                              # Rigorous unit and integration test suite (52 tests)
 ```

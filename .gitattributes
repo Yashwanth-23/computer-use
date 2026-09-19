@@ -1,0 +1,11 @@
+# Enforce platform-independent LF line endings for all text files across Git clones
+* text=auto eol=lf
+
+# Binary asset rules
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary

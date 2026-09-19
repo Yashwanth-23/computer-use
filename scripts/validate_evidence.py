@@ -2,7 +2,7 @@
 Evidence Integrity and Secret/PII Validator.
 
 Verifies:
-1. Manifest integrity: evidence/manifest.json exists and all SHA-256 checksums match live files.
+1. Manifest integrity: evidence/manifest.json exists and all canonical SHA-256 checksums match live files.
 2. Provenance consistency:
    - capability_member_lookup.json ID (cap_bfa2d82803e3) matches all member lookup replay logs and manifest entries.
    - capability_open_subaccount.json ID (cap_open_sub_account) matches replay_escalation_handoff.log.
@@ -21,12 +21,13 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-def sha256_file(path: str) -> str:
-    h = hashlib.sha256()
+def sha256_canonical(path: str) -> str:
+    """Compute SHA-256 with platform-independent line-ending normalization for text files."""
     with open(path, "rb") as f:
-        while chunk := f.read(8192):
-            h.update(chunk)
-    return h.hexdigest()
+        data = f.read()
+    if any(path.endswith(ext) for ext in [".json", ".log", ".txt", ".md", ".py", ".html"]):
+        data = data.replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
 
 
 def validate_manifest(manifest_path: str = "evidence/manifest.json") -> dict:
@@ -41,7 +42,7 @@ def validate_manifest(manifest_path: str = "evidence/manifest.json") -> dict:
         p = art["path"]
         if not os.path.exists(p):
             raise FileNotFoundError(f"Artifact {p} listed in manifest does not exist")
-        actual_hash = sha256_file(p)
+        actual_hash = sha256_canonical(p)
         if actual_hash != art["sha256"]:
             raise ValueError(f"Checksum mismatch for {p}: manifest={art['sha256']} actual={actual_hash}")
 
@@ -50,7 +51,7 @@ def validate_manifest(manifest_path: str = "evidence/manifest.json") -> dict:
         log_file = run["log_file"]
         if not os.path.exists(log_file):
             raise FileNotFoundError(f"Log file {log_file} listed in manifest does not exist")
-        actual_hash = sha256_file(log_file)
+        actual_hash = sha256_canonical(log_file)
         if actual_hash != run["sha256"]:
             raise ValueError(f"Checksum mismatch for {log_file}: manifest={run['sha256']} actual={actual_hash}")
 
@@ -94,28 +95,37 @@ def validate_provenance(manifest: dict):
 def scan_for_secrets_and_pii(dirs: list[str]):
     # Disallow unredacted real SSN patterns (not placeholder/redacted strings)
     ssn_re = re.compile(r"\b(?!000|666|9\d\d)(\d{3})-(?!00)(\d{2})-(?!0000)(\d{4})\b")
+    # Live Credit Card numbers (Visa, Mastercard, Amex, Discover)
+    card_re = re.compile(r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b")
     # Live OpenAI / Anthropic key format check (e.g. sk-ant-api03-..., sk-proj-...)
     live_key_re = re.compile(r"\b(sk-ant-[a-zA-Z0-9_\-]{20,}|sk-proj-[a-zA-Z0-9_\-]{20,})\b")
 
     for d in dirs:
         for root, _, files in os.walk(d):
             for fname in files:
-                if fname.endswith((".py", ".json", ".log", ".md")):
+                if fname.endswith((".py", ".json", ".log", ".md", ".txt")):
                     fpath = os.path.join(root, fname)
                     with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
                         text = f.read()
                     if live_key_re.search(text):
                         raise ValueError(f"Potential live API key detected in {fpath}")
+                    if ssn_re.search(text):
+                        raise ValueError(f"Potential unredacted SSN detected in {fpath}")
+                    if card_re.search(text):
+                        raise ValueError(f"Potential unredacted credit card detected in {fpath}")
 
 
 def verify_no_bypass_flags(dirs: list[str]):
     bypass_terms = ["--allow" + "-unattended-risky", "--allow" + "-risky", "allow" + "_unattended_risky"]
+    text_extensions = (".py", ".json", ".log", ".md", ".txt")
     for d in dirs:
         for root, _, files in os.walk(d):
             for fname in files:
-                if fname.endswith(".py") and fname != "validate_evidence.py":
+                if fname == "validate_evidence.py":
+                    continue
+                if fname.endswith(text_extensions):
                     fpath = os.path.join(root, fname)
-                    with open(fpath, "r", encoding="utf-8") as f:
+                    with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
                         text = f.read()
                     for term in bypass_terms:
                         if term in text:
@@ -138,12 +148,12 @@ def main():
     # 3. Secret and PII scan
     print("[3/4] Scanning evidence/ and src/ for unredacted PII/secrets...")
     scan_for_secrets_and_pii(["evidence", "src"])
-    print("      No live keys or unredacted secrets found.")
+    print("      No live keys, real SSNs, or credit card numbers found.")
 
     # 4. Zero bypass verification
-    print("[4/4] Verifying zero unattended risky bypass flags in codebase...")
+    print("[4/4] Verifying zero unattended risky bypass flags across text assets...")
     verify_no_bypass_flags(["src", "scripts"])
-    print("      Zero bypass flags found. Strict fail-closed policy active.")
+    print("      Zero bypass flags found across all code and text assets. Strict fail-closed policy active.")
 
     print("\n[SUCCESS] Evidence integrity, provenance, and safety checks PASSED.")
 

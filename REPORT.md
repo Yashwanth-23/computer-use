@@ -73,7 +73,7 @@ To maintain rigorous technical transparency, we distinguish between what is **im
    * *Decision*: Rather than flooding LLM context with the raw 50KB HTML tree each turn, `SurfaceObserver` parses the accessibility tree and extracts interactive controls (inputs, buttons, select, links, and balance grids) into a structured compact summary.
    * *Trade-Off*: Keeps input token growth lean (~600-1000 tokens/turn) and discovery latency low (~1.2-2.9s) while providing 100% of required visual/functional affordances.
 5. **Cycle Detection & Discovery Dead-End Containment**:
-   * *Decision*: Implemented a 60-second wall-clock deadline alongside SHA-256 state fingerprinting in `DiscoveryAgent`. If an exploration hits the same state signature 3 times consecutively without progress, the loop halts immediately with `EscalationReason.STUCK_DURING_DISCOVERY`. Incomplete or aborted explorations fail cleanly without writing corrupted artifacts.
+   * *Decision*: Implemented a 60-second wall-clock deadline alongside SHA-256 state fingerprinting in `DiscoveryAgent`. If an exploration exceeds the wall-clock deadline, it raises `TimeoutError`. If it hits the same state signature 3 times consecutively without progress, the loop halts immediately with `RuntimeError` ("detected 3 duplicate cycles"). Incomplete or aborted explorations fail cleanly without writing corrupted artifacts.
 
 ---
 
@@ -129,10 +129,10 @@ When an exceptional condition triggers during execution, `RecoveryManager` evalu
 3. **Hard Failure Last**: If a locator cannot be resolved across all fallback rungs and no exceptional rule matches, execution halts cleanly with captured screenshots and redacted DOM debug context.
 
 ### 4. Measured Execution Latency
-Contrary to broad "sub-second end-to-end" claims, measured execution latency reflects real DOM rendering and network dispatch:
-* **Per DOM Interaction**: ~25ms–50ms for local DOM queries; ~900ms–1000ms with standard page navigation or server postbacks.
-* **Full Multi-Step Replay**: ~1.5s–2.5s total end-to-end for a 5-step workflow (navigation, typing, searching, and extracting 2 balances).
-* **Speedup vs. Discovery**: Compared to multi-turn LLM discovery which takes 15–30+ seconds and consumes 3,000–5,000 tokens, deterministic replay delivers a **10x–15x speedup at exactly zero token cost**.
+Contrary to broad "sub-second end-to-end" claims, measured execution latency reflects real DOM rendering, server postback roundtrips, and browser initialization:
+* **Per DOM Interaction**: ~25ms–50ms for local DOM queries and inputs; ~900ms–1000ms when handling server-rendered ASP.NET postbacks and page loads.
+* **Full Multi-Step Replay**: ~4.7s–4.9s across the 5 replay steps (~950ms–980ms per step); ~5s–6s total wall-clock time including Playwright Chromium browser startup.
+* **Speedup vs. Discovery**: Compared to multi-turn LLM discovery which takes 15–30+ seconds and consumes 3,000–5,000 tokens, deterministic replay delivers a **3x–6x latency improvement and infinite token efficiency at exactly zero model cost**.
 
 ---
 
@@ -194,6 +194,7 @@ Banking compliance strictly forbids unattended AI agents from committing irrever
 * Automation pauses. The live Playwright page is yielded to the operator console.
 * The human operator interacts with the live browser (or CLI prompt), completes the challenge or signs off, and enters `resume`.
 * Automation records `OperatorAction` in the audit log, re-verifies postconditions, and resumes deterministic execution.
+* **Evidence Run Mode**: In automated regression suites and verifiable evidence generation (`scripts/generate_evidence.py`), this handoff is exercised via a simulated supervisor callback (`mode: simulated_operator_supervised`, with log title `=== SIMULATED OPERATOR SUPERVISED HANDOFF AUDIT TRAIL ===` and supervisor ID `SUPV-8821`), proving the control transfer seam end-to-end without fabricating live human presence. Live headed interaction is invoked via `--interactive --headed`.
 
 ---
 
@@ -212,7 +213,7 @@ Banking compliance strictly forbids unattended AI agents from committing irrever
 * Passwords / Secrets -> `[REDACTED_SECRET]`
 
 ### 3. Screenshot Policy & Visual Masking
-* **Pre-Screenshot DOM Blurring**: Before any failure or escalation screenshot is captured, `ErrorDiagnostics` injects visual CSS filters (`filter: blur(6px)`) onto sensitive DOM elements (`.ssn, .balance, [data-sensitive], input[type="password"]`).
+* **Pre-Screenshot DOM Blurring**: Before any failure or escalation screenshot is captured, both `ErrorDiagnostics` and `EscalationManager` inject visual CSS filters (`filter: blur(6px)`) onto sensitive DOM elements (`.ssn, .balance, [data-sensitive], input[type="password"]`). Synthetic demo review inputs and confirmation labels remain intentionally legible so the operator or supervisor can inspect and verify the transaction context before sign-off.
 * **Ephemeral Storage & Retention**: Screenshots are stored strictly in `evidence/screenshots/`. In production, these directories are mounted with 7-day TTL policies and encrypted at rest.
 * **Cryptographic Manifest Tracking**: Orphaned screenshots from aborted or test runs are actively pruned during evidence generation, ensuring only active, audited evidence artifacts are retained in `evidence/manifest.json`.
 

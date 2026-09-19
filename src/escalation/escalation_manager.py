@@ -51,6 +51,16 @@ class EscalationManager:
         screenshot_path = os.path.join(self.evidence_dir, screenshot_filename).replace("\\", "/")
 
         try:
+            # Visually mask sensitive selectors before escalation screenshot
+            page.evaluate("""() => {
+                document.querySelectorAll('.ssn, .balance, [data-sensitive], input[type="password"]').forEach(el => {
+                    el.style.filter = 'blur(6px)';
+                });
+            }""")
+        except Exception:
+            pass
+
+        try:
             page.screenshot(path=screenshot_path)
         except Exception:
             screenshot_path = "screenshot_capture_failed.png"

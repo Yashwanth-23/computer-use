@@ -5,9 +5,10 @@ Computer-Use Automation System against the mock banking core.
 Requirements met:
 1. Preserves canonical Claude discovery log (evidence/discovery_run.log) and its capability ID (cap_bfa2d82803e3).
 2. Runs deterministic zero-token replay for Happy Path (1001), Business Outcome (9999), and Interstitial Recovery.
-3. Runs genuine human escalation handoff on capability_open_subaccount.json through ReplayExecutor.
+3. Runs genuine human escalation handoff on capability_open_subaccount.json through ReplayExecutor with simulated supervisor handler.
 4. Runs intentional hard failure demonstrating masked screenshot diagnostics and sanitized error logs.
-5. Prunes orphaned screenshots and emits cryptographically signed evidence/manifest.json.
+5. Employs platform-independent LF canonical line-ending hashing across all logs and manifests.
+6. Prunes orphaned screenshots and emits cryptographically signed evidence/manifest.json.
 
 Run: python scripts/generate_evidence.py
 """
@@ -43,13 +44,13 @@ from src.schemas.execution import ReplayStatus
 from src.engine.replay_executor import ReplayExecutor
 
 
-def sha256_file(filepath: str) -> str:
-    """Compute SHA-256 checksum of a file."""
-    h = hashlib.sha256()
+def sha256_canonical(filepath: str) -> str:
+    """Compute SHA-256 checksum with platform-independent line ending canonicalization for text."""
     with open(filepath, "rb") as f:
-        while chunk := f.read(8192):
-            h.update(chunk)
-    return h.hexdigest()
+        data = f.read()
+    if any(filepath.endswith(ext) for ext in [".json", ".log", ".txt", ".md", ".py", ".html"]):
+        data = data.replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
 
 
 def get_git_commit() -> str:
@@ -64,6 +65,14 @@ def get_git_commit() -> str:
 def main():
     print("=== [EVIDENCE SUITE GENERATION INITIATED] ===")
     os.makedirs("evidence/screenshots", exist_ok=True)
+
+    # Normalize canonical discovery log line endings to LF
+    if os.path.exists("evidence/discovery_run.log"):
+        with open("evidence/discovery_run.log", "rb") as f:
+            disc_raw = f.read()
+        if b"\r\n" in disc_raw:
+            with open("evidence/discovery_run.log", "wb") as f:
+                f.write(disc_raw.replace(b"\r\n", b"\n"))
 
     # 1. Start local mock banking core server
     core_data.reset_all()
@@ -112,7 +121,7 @@ def main():
         success_log.append(f"  * {tr.step_id:<25} ({tr.duration_ms:>5.1f}ms) {loc}")
     success_log.append("=====================================================")
 
-    with open("evidence/replay_success.log", "w", encoding="utf-8") as f:
+    with open("evidence/replay_success.log", "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(success_log) + "\n")
     print("  Wrote evidence/replay_success.log")
 
@@ -140,7 +149,7 @@ def main():
         not_found_log.append(f"  * {tr.step_id:<25} ({tr.duration_ms:>5.1f}ms) {loc}{detail}")
     not_found_log.append("=====================================================")
 
-    with open("evidence/replay_business_outcome_404.log", "w", encoding="utf-8") as f:
+    with open("evidence/replay_business_outcome_404.log", "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(not_found_log) + "\n")
     print("  Wrote evidence/replay_business_outcome_404.log")
 
@@ -170,7 +179,7 @@ def main():
         recovery_log.append(f"  * {tr.step_id:<25} ({tr.duration_ms:>5.1f}ms) {loc}{detail}")
     recovery_log.append("=====================================================")
 
-    with open("evidence/replay_interstitial_recovery.log", "w", encoding="utf-8") as f:
+    with open("evidence/replay_interstitial_recovery.log", "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(recovery_log) + "\n")
     print("  Wrote evidence/replay_interstitial_recovery.log")
 
@@ -191,7 +200,7 @@ def main():
         captured_req["screenshot_ref"] = request.screenshot_ref.replace("\\", "/")
         captured_req["run_id"] = request.run_id
         referenced_screenshots.add(os.path.basename(request.screenshot_ref))
-        return "Supervisor (ID: SUPV-8821) verified member 1001 KYC and authorized creation of HOLIDAY_CLUB sub-account"
+        return "Simulated Supervisor (ID: SUPV-8821) verified member 1001 KYC and authorized creation of HOLIDAY_CLUB sub-account"
 
     esc_executor = ReplayExecutor(
         headless=True,
@@ -214,7 +223,7 @@ def main():
         raise RuntimeError(f"Escalation replay failed with status: {res_esc.status}")
 
     handoff_log = [
-        "=== HUMAN-IN-THE-LOOP ESCALATION & HANDOFF AUDIT TRAIL ===",
+        "=== SIMULATED OPERATOR SUPERVISED HANDOFF AUDIT TRAIL ===",
         f"TIMESTAMP:       {datetime.now(timezone.utc).isoformat()}",
         f"RUN ID:          {res_esc.run_id}",
         f"CAPABILITY ID:   {res_esc.capability_id} (v{res_esc.capability_version})",
@@ -234,7 +243,7 @@ def main():
         handoff_log.append(f"  * {tr.step_id:<25} ({tr.duration_ms:>5.1f}ms) {loc}{detail}")
     handoff_log.append("=========================================================")
 
-    with open("evidence/replay_escalation_handoff.log", "w", encoding="utf-8") as f:
+    with open("evidence/replay_escalation_handoff.log", "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(handoff_log) + "\n")
     print("  Wrote evidence/replay_escalation_handoff.log")
 
@@ -297,7 +306,7 @@ def main():
         fail_log.append(f"  * {tr.step_id:<32} ({tr.duration_ms:>5.1f}ms) [{tr.outcome.value}] {loc}")
     fail_log.append("================================================================")
 
-    with open("evidence/replay_hard_failure.log", "w", encoding="utf-8") as f:
+    with open("evidence/replay_hard_failure.log", "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(fail_log) + "\n")
     print("  Wrote evidence/replay_hard_failure.log")
 
@@ -336,7 +345,7 @@ def main():
                 "capability_id": lookup_artifact.metadata.id,
                 "name": lookup_artifact.metadata.name,
                 "version": lookup_artifact.metadata.version,
-                "sha256": sha256_file("evidence/capability_member_lookup.json"),
+                "sha256": sha256_canonical("evidence/capability_member_lookup.json"),
                 "provenance": "Compiled from genuine Claude 3.5 Sonnet discovery run (see evidence/discovery_run.log)",
             },
             {
@@ -344,7 +353,7 @@ def main():
                 "capability_id": subaccount_artifact.metadata.id,
                 "name": subaccount_artifact.metadata.name,
                 "version": subaccount_artifact.metadata.version,
-                "sha256": sha256_file("evidence/capability_open_subaccount.json"),
+                "sha256": sha256_canonical("evidence/capability_open_subaccount.json"),
                 "provenance": "Compiled capability artifact with Step 5 classified as RISKY_IRREVERSIBLE",
             },
         ],
@@ -355,7 +364,7 @@ def main():
                 "mode": "genuine_model_discovery",
                 "model": "claude-3-5-sonnet",
                 "status": "COMPLETED",
-                "sha256": sha256_file("evidence/discovery_run.log"),
+                "sha256": sha256_canonical("evidence/discovery_run.log"),
                 "description": "Autonomous discovery against hostile ASP.NET banking portal using Claude 3.5 Sonnet",
             },
             {
@@ -364,7 +373,7 @@ def main():
                 "capability_id": res_success.capability_id,
                 "mode": "deterministic_replay_zero_token",
                 "status": res_success.status.value,
-                "sha256": sha256_file("evidence/replay_success.log"),
+                "sha256": sha256_canonical("evidence/replay_success.log"),
                 "description": "Replay for member 1001 with zero LLM tokens and multi-strategy DOM resolution",
             },
             {
@@ -373,7 +382,7 @@ def main():
                 "capability_id": res_not_found.capability_id,
                 "mode": "deterministic_replay_zero_token",
                 "status": res_not_found.status.value,
-                "sha256": sha256_file("evidence/replay_business_outcome_404.log"),
+                "sha256": sha256_canonical("evidence/replay_business_outcome_404.log"),
                 "description": "Expected business outcome classification (MEMBER_NOT_FOUND) for member 9999",
             },
             {
@@ -382,7 +391,7 @@ def main():
                 "capability_id": res_recovery.capability_id,
                 "mode": "deterministic_replay_zero_token",
                 "status": res_recovery.status.value,
-                "sha256": sha256_file("evidence/replay_interstitial_recovery.log"),
+                "sha256": sha256_canonical("evidence/replay_interstitial_recovery.log"),
                 "description": "Autonomous detection and recovery from maintenance banner interstitial",
             },
             {
@@ -391,9 +400,9 @@ def main():
                 "capability_id": res_esc.capability_id,
                 "mode": "simulated_operator_supervised",
                 "status": res_esc.status.value,
-                "sha256": sha256_file("evidence/replay_escalation_handoff.log"),
-                "screenshot": list(referenced_screenshots)[0] if referenced_screenshots else None,
-                "description": "Policy risk gate triggers on irreversible sub-account creation; human supervisor authorizes live session",
+                "sha256": sha256_canonical("evidence/replay_escalation_handoff.log"),
+                "screenshot": os.path.basename(captured_req.get("screenshot_ref", "")),
+                "description": "Policy risk gate triggers on irreversible sub-account creation; simulated operator supervisor authorizes live session",
             },
             {
                 "log_file": "evidence/replay_hard_failure.log",
@@ -401,14 +410,14 @@ def main():
                 "capability_id": res_fail.capability_id,
                 "mode": "diagnostic_hard_failure",
                 "status": res_fail.status.value,
-                "sha256": sha256_file("evidence/replay_hard_failure.log"),
+                "sha256": sha256_canonical("evidence/replay_hard_failure.log"),
                 "screenshot": os.path.basename(screenshot_path),
                 "description": "Intentional unrecoverable DOM fault demonstrating sanitized error diagnostics and masked visual failure captures",
             },
         ],
     }
 
-    with open("evidence/manifest.json", "w", encoding="utf-8") as f:
+    with open("evidence/manifest.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(manifest_data, f, indent=2)
     print("  Wrote evidence/manifest.json")
 
