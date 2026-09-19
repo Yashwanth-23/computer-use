@@ -95,8 +95,13 @@ def validate_provenance(manifest: dict):
 def scan_for_secrets_and_pii(dirs: list[str]):
     # Disallow unredacted real SSN patterns (not placeholder/redacted strings)
     ssn_re = re.compile(r"\b(?!000|666|9\d\d)(\d{3})-(?!00)(\d{2})-(?!0000)(\d{4})\b")
-    # Live Credit Card numbers (Visa, Mastercard, Amex, Discover)
-    card_re = re.compile(r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b")
+    # Live Credit Card numbers (Visa, Mastercard, Amex, Discover - contiguous, space, or dash-separated)
+    card_re = re.compile(
+        r"\b(?:4[0-9]{3}(?:[ -]?[0-9]{4}){3}"
+        r"|5[1-5][0-9]{2}(?:[ -]?[0-9]{4}){3}"
+        r"|3[47][0-9]{2}[ -]?[0-9]{6}[ -]?[0-9]{5}"
+        r"|6(?:011|5[0-9]{2})(?:[ -]?[0-9]{4}){3})\b"
+    )
     # Live OpenAI / Anthropic key format check (e.g. sk-ant-api03-..., sk-proj-...)
     live_key_re = re.compile(r"\b(sk-ant-[a-zA-Z0-9_\-]{20,}|sk-proj-[a-zA-Z0-9_\-]{20,})\b")
 

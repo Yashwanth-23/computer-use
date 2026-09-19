@@ -187,7 +187,7 @@ Escalation is not an uncaught exception; it is an architected state machine oper
 Banking compliance strictly forbids unattended AI agents from committing irreversible financial mutations.
 * **Semantic Risk Classification**: Steps matching state-changing verbs (`confirm`, `submit`, `open-subaccount`, `transfer`) are classified as `RiskLevel.RISKY_IRREVERSIBLE` with required `risk_justification`.
 * **Zero-Bypass Mandate**: Under unattended replay (headless without an operator session), any encounter with a `RISKY_IRREVERSIBLE` action **fails closed**. The engine halts immediately, leaves state completely untouched, sets `step_trace.outcome = StepOutcome.SKIPPED_ESCALATED`, and returns `ReplayStatus.ESCALATED`.
-* **No Fabricated Approval**: The system never auto-resumes or writes false audit statements. Human approval is only logged when an authentic operator interactively authorizes the action.
+* **No Fabricated Live-Human Approval**: The system never auto-resumes or writes false audit statements. Live-human approval is only logged when an authentic operator interactively authorizes the action.
 
 ### The Live Session Handoff Seam
 * When escalation fires, `EscalationManager` creates a structured `InterventionRequest` carrying the goal, step index, live screenshot path, and current URL.
