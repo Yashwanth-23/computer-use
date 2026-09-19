@@ -77,7 +77,7 @@ To maintain rigorous technical transparency, we distinguish between what is **im
 
 ---
 
-## 2. Artifact Schema
+## 2. Artifact schema
 
 The capability artifact (`src/schemas/artifact.py`) is designed as an **agent-invocable contract**, completely decoupled from discovery transcripts, prompt tokens, or raw vision coordinates.
 
@@ -105,7 +105,7 @@ The capability artifact (`src/schemas/artifact.py`) is designed as an **agent-in
 
 ---
 
-## 3. Determinism & Error Handling
+## 3. Determinism & error handling
 
 Deterministic replay in enterprise banking must accommodate runtime variance without crashing. Our system enforces a three-way outcome taxonomy.
 
@@ -136,7 +136,7 @@ Contrary to broad "sub-second end-to-end" claims, measured execution latency ref
 
 ---
 
-## 4. Heterogeneity & Multi-Tenant Architecture
+## 4. Heterogeneity & multi-tenant
 
 ### 1. Surface Abstraction Seam
 The system abstracts surface interactions via a unified protocol:
@@ -175,7 +175,7 @@ When 200 credit unions run the same core vendor application with divergent brand
 
 ---
 
-## 5. Escalation & Handoff
+## 5. Escalation & handoff
 
 Escalation is not an uncaught exception; it is an architected state machine operating on the **exact same live browser session**:
 
@@ -198,7 +198,7 @@ Banking compliance strictly forbids unattended AI agents from committing irrever
 
 ---
 
-## 6. Safety & Financial Data Guardrails
+## 6. Safety
 
 ### 1. Domain, Scheme, and Route Allowlists
 * `PolicyGuardrail` enforces host/port verification: `http://127.0.0.1:8000` is accepted, while unauthorized external hosts are rejected with `SecurityViolationError`.
