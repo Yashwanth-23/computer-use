@@ -1,22 +1,22 @@
-=== HUMAN-IN-THE-LOOP ESCALATION & HANDOFF AUDIT TRAIL ===
-TIMESTAMP:       2026-09-18T23:56:51.337506+00:00
-RUN ID:          run_3b7bbd6968bb
+=== SIMULATED OPERATOR SUPERVISED HANDOFF AUDIT TRAIL ===
+TIMESTAMP:       2026-09-19T00:42:43.303273+00:00
+RUN ID:          run_bf4846aaa327
 CAPABILITY ID:   cap_open_sub_account (v1.0.0)
-INCIDENT ID:     esc_31c7f776e0e9
+INCIDENT ID:     esc_a4d340a6f0be
 REASON:          risky_step_approval
 EXPLANATION:     Policy Gate: Step 'step_5_confirm_submit' (click) is classified as RISKY_IRREVERSIBLE (Opening a sub-account creates an active financial ledger record and allocates initial deposit funds. This operation cannot be automatically reversed without human supervisor authorization.). Unattended execution blocked by banking policy.
 PROPOSED ACTION: Execute click on step_5_confirm_submit
-SCREENSHOT REF:  evidence/screenshots/escalation_run_3b7b_step_5_confirm_submit_20260918_235647.png
-RUN REF:         run_3b7bbd6968bb
+SCREENSHOT REF:  evidence/screenshots/escalation_run_bf48_step_5_confirm_submit_20260919_004239.png
+RUN REF:         run_bf4846aaa327
 FINAL STATUS:    SUCCESS
 OUTPUTS:         {
   "receipt_id": "APX-100000"
 }
 STEP TRACES (Showing Gated Human Sign-off):
-  * step_1_navigate_form      (1603.2ms) 
-  * step_2_select_product     (1574.1ms) [stable_id candidate=0]
-  * step_3_enter_deposit      (1576.4ms) [stable_id candidate=0]
-  * step_4_click_review       (1632.4ms) [stable_id candidate=0]
-  * step_5_confirm_submit     (1682.5ms) [stable_id candidate=0] - Operator resolved: Supervisor (ID: SUPV-8821) verified member 1001 KYC and authorized creation of HOLIDAY_CLUB sub-account
-  * step_6_extract_receipt    (1564.2ms) [stable_id candidate=0]
+  * step_1_navigate_form      (1647.9ms) 
+  * step_2_select_product     (1574.7ms) [stable_id candidate=0]
+  * step_3_enter_deposit      (1582.5ms) [stable_id candidate=0]
+  * step_4_click_review       (1656.9ms) [stable_id candidate=0]
+  * step_5_confirm_submit     (1701.8ms) [stable_id candidate=0] - Operator resolved: Simulated Supervisor (ID: SUPV-8821) verified member 1001 KYC and authorized creation of HOLIDAY_CLUB sub-account
+  * step_6_extract_receipt    (1579.8ms) [stable_id candidate=0]
 =========================================================
